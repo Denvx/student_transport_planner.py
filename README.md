@@ -11,7 +11,7 @@
 
 Este projeto foi desenvolvido para automatizar o planejamento do transporte universitario da **AERJ — Associacao de Transporte de Riacho do Jacuipe**.
 
-O sistema le uma lista de estudantes organizada por faculdade (gerada no WhatsApp, por exemplo), processa os dados, remove duplicatas, identifica quem vai na ida e quem volta, ordena as faculdades por distancia geografica da origem e distribui os alunos nos veiculos disponiveis de forma eficiente.
+O sistema le uma lista de estudantes organizada por faculdade (gerada no WhatsApp, por exemplo), processa os dados, remove duplicatas, identifica quem vai na ida e quem volta, ordena as faculdades por distancia geografica da origem usando a API do OpenRouteService para calculos precisos de rota de carro, e distribui os alunos nos veiculos disponiveis de forma eficiente.
 
 O processo que antes era feito manualmente passa a ser resolvido em segundos.
 
@@ -19,7 +19,7 @@ O processo que antes era feito manualmente passa a ser resolvido em segundos.
 
 ## Problema que o sistema resolve
 
-As listas de transporte chegam em formato livre, com repeticoes, numeracoes fora de ordem e alunos sem especificar se vao na ida, na volta ou nos dois sentidos. Processar isso manualmente e lento e sujeito a erro.
+As listas de transporte chegam em formato livre e alunos sem especificar se vao na ida, na volta ou nos dois sentidos. Processar isso manualmente e lento e sujeito a erro.
 
 Este script:
 
@@ -75,20 +75,7 @@ O script percorre o texto linha a linha e:
 
 ### 3. Ordenacao por distancia
 
-Cada faculdade tem coordenadas geograficas cadastradas. O sistema calcula a distancia entre a origem do transporte e cada faculdade e define a ordem da rota:
-
-```python
-coordenadas = {
-    "UNEF": (-12.27415110131773, -38.933359218509345),
-    "UNIFAN": (-12.248416984981803, -38.954434249711596),
-    "UEFS": (-12.200186611506028, -38.97186855898357),
-    "SENAI": (-12.23050281951723, -38.96934641511576),
-    "QUADRIVIUM": (-12.251282176815081, -38.95890350671682),
-    "INSTITUTO MIX": (-12.255552595513555, -38.96096778967345),
-    "UNIRB": (-12.272706100429666, -38.93353845266053),
-    "IFBA": (-12.289096911618342, -38.91357269338105)
-}
-```
+Cada faculdade tem coordenadas geograficas cadastradas. O sistema calcula a distancia real de rota de carro entre a origem do transporte e cada faculdade usando a API do OpenRouteService, definindo a ordem otimizada da rota baseada em distancia e tempo de viagem.
 
 ### 4. Distribuicao nos veiculos
 
@@ -100,41 +87,19 @@ Com os grupos ordenados, o algoritmo percorre a lista e aloca cada faculdade no 
  - SENAI     | Ida:  4 | Volta:  3 | Total:  4
  - QUADRIVIUM| Ida:  8 | Volta:  7 | Total:  8
 
-Van 1 (18/20)
+Van 1 (19/20)
  - UNIFAN    | Ida: 18 | Volta: 15 | Total: 18
-
-Van 2 (1/15)
  - IFBA      | Ida:  1 | Volta:  1 | Total:  1
 ```
 
 ---
-
-## Exemplo de Saida
-
-```
-===== DISTRIBUICAO DOS VEICULOS =====
-
-Ônibus 1 (48/50)
- - UEFS      | Ida: 13 | Volta: 11 | Total: 13
- - SENAI     | Ida:  4 | Volta:  3 | Total:  4
-
-Van 1 (20/20)
- - UNIFAN    | Ida: 18 | Volta: 15 | Total: 20
-
-Van 2 (1/15)
- - IFBA      | Ida:  1 | Volta:  1 | Total:  1
-```
-
----
-
 ## Tecnologias Utilizadas
 
 - **Python 3.x**
 - `re` — expressoes regulares para parsing do texto
 - `collections.defaultdict` — agrupamento dos dados por faculdade
-- `math` — calculo de distancia entre coordenadas geograficas
-
-Sem dependencias externas. Basta ter o Python instalado.
+- `openrouteservice` — API para calculo de rotas e distancias reais
+- `python-dotenv` — carregamento de variaveis de ambiente do arquivo .env
 
 ---
 
@@ -152,25 +117,49 @@ O código está organizado em módulos para facilitar manutenção e testes:
 
 ## Como Executar
 
+### 1. Pré-requisitos
+
+- Python 3.x instalado (https://www.python.org/downloads/)
+- Conta no OpenRouteService para obter chave da API (gratuita para uso limitado: https://openrouteservice.org/)
+
+### 2. Instalação das dependências
+
 ```bash
 # Clone o repositorio
-https://github.com/Denvx/student_transport_planner.py.git
-
-# Entre na pasta
+git clone https://github.com/Denvx/student_transport_planner.py.git
 cd student_transport_planner.py
 
-# Execute o script
+# Instale as dependências
+pip install openrouteservice python-dotenv
+```
+
+### 3. Configuração da API
+
+- Copie o arquivo de exemplo para o arquivo real:
+  ```bash
+  cp .env.example .env
+  ```
+
+- Edite o arquivo `.env` e adicione sua chave da API do OpenRouteService:
+  ```
+  API_KEY_HEIGIT=sua_chave_aqui
+  ```
+  (Obtenha a chave em https://openrouteservice.org/dev/#/signup)
+
+### 4. Execução
+
+```bash
 python main.py
 ```
 
-Para usar com uma nova lista, substitua o conteudo da variavel `texto` no arquivo pelo texto atualizado da lista de transporte.
+Para usar com uma nova lista, substitua o conteudo da variavel `texto` no arquivo `main.py` pelo texto atualizado da lista de transporte.
 
 ---
 
 ## Proximas Etapas
 
+- ✅ Calculo de rota otimizada com API de mapas (implementado)
 - Leitura automatica do texto via arquivo `.txt` ou entrada no terminal
-- Calculo de rota otimizada com API de mapas
 - Relatorio exportado em PDF ou planilha
 - Interface web para gestao das listas
 - Cadastro de alunos e faculdades em banco de dados

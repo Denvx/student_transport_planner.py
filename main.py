@@ -1,5 +1,5 @@
 from coordenadas import coordenadas, origem
-from distancia import distancia
+from distancia import distancia_rota
 from parser_lista import processar_lista
 from distribuicao import distribuir
 
@@ -180,15 +180,15 @@ IFBA
 # Texto bruto da lista de transporte (substitua pelo conteúdo real)
 
 
-dados = processar_lista(texto, coordenadas)  # Processa o texto e extrai dados das faculdades
+dados = processar_lista(texto, coordenadas)
 
 faculdades_ordenadas = sorted(
     dados.items(),
-    key=lambda x: distancia(origem, coordenadas.get(x[0], origem))  # Ordena faculdades pela distância da origem
+    key=lambda x: distancia_rota(origem, coordenadas.get(x[0], origem))[0]  # Ordena faculdades pela distância da origem
 )
 
 
-veiculos = distribuir(faculdades_ordenadas)  # Distribui faculdades nos veículos
+veiculos = distribuir(faculdades_ordenadas)
 
 
 print("\n===== DISTRIBUIÇÃO DOS VEÍCULOS =====") 

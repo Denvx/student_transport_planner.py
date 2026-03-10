@@ -4,7 +4,10 @@ def distribuir(faculdades_ordenadas):
         {"nome": "Ônibus 1", "capacidade": 50, "ocupado": 0, "faculdades": []},
         {"nome": "Ônibus 2", "capacidade": 50, "ocupado": 0, "faculdades": []},
         {"nome": "Van 1", "capacidade": 20, "ocupado": 0, "faculdades": []},
-        {"nome": "Van 2", "capacidade": 15, "ocupado": 0, "faculdades": []}
+        {"nome": "Van 2", "capacidade": 15, "ocupado": 0, "faculdades": []},
+        {"nome": "Van 5", "capacidade": 15, "ocupado": 0, "faculdades": []},
+        {"nome": "Van 3", "capacidade": 20, "ocupado": 0, "faculdades": []}
+
     ]
 
     for fac, info in faculdades_ordenadas:  # Para cada faculdade ordenada por distância
