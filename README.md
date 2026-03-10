@@ -35,8 +35,8 @@ Este script:
 
 | Veiculo  | Capacidade |
 |----------|:----------:|
-| Onibus 1 | 50 lugares |
-| Onibus 2 | 50 lugares |
+| Ônibus 1 | 50 lugares |
+| Ônibus 2 | 50 lugares |
 | Van 1    | 20 lugares |
 | Van 2    | 15 lugares |
 
@@ -95,7 +95,7 @@ coordenadas = {
 Com os grupos ordenados, o algoritmo percorre a lista e aloca cada faculdade no primeiro veiculo que ainda tenha capacidade suficiente:
 
 ```
-Onibus 1 (48/50)
+Ônibus 1 (48/50)
  - UEFS      | Ida: 13 | Volta: 11 | Total: 13
  - SENAI     | Ida:  4 | Volta:  3 | Total:  4
  - QUADRIVIUM| Ida:  8 | Volta:  7 | Total:  8
@@ -114,7 +114,7 @@ Van 2 (1/15)
 ```
 ===== DISTRIBUICAO DOS VEICULOS =====
 
-Onibus 1 (48/50)
+Ônibus 1 (48/50)
  - UEFS      | Ida: 13 | Volta: 11 | Total: 13
  - SENAI     | Ida:  4 | Volta:  3 | Total:  4
 
@@ -138,6 +138,18 @@ Sem dependencias externas. Basta ter o Python instalado.
 
 ---
 
+## Estrutura do Projeto
+
+O código está organizado em módulos para facilitar manutenção e testes:
+
+- `main.py`: Arquivo principal que importa os módulos, processa a lista de texto, ordena as faculdades por distância e distribui nos veículos, imprimindo o resultado.
+- `coordenadas.py`: Define as coordenadas geográficas (latitude, longitude) de cada faculdade e o ponto de origem do transporte.
+- `distancia.py`: Contém a função para calcular a distância euclidiana entre dois pontos geográficos.
+- `parser_lista.py`: Processa o texto bruto da lista, identificando faculdades e alunos, classificando-os como ida, volta ou ambos.
+- `distribuicao.py`: Implementa a lógica de distribuição das faculdades nos veículos disponíveis, priorizando o primeiro com capacidade suficiente.
+
+---
+
 ## Como Executar
 
 ```bash
@@ -145,10 +157,10 @@ Sem dependencias externas. Basta ter o Python instalado.
 https://github.com/Denvx/student_transport_planner.py.git
 
 # Entre na pasta
-cd aerj-rotas
+cd student_transport_planner.py
 
 # Execute o script
-python rotas.py
+python main.py
 ```
 
 Para usar com uma nova lista, substitua o conteudo da variavel `texto` no arquivo pelo texto atualizado da lista de transporte.
