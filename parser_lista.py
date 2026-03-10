@@ -3,13 +3,13 @@ from collections import defaultdict
 
 
 def processar_lista(texto, coordenadas):
-    # Insere quebras de linha antes dos nomes das faculdades para facilitar o parsing
+
     for fac in coordenadas.keys():
         texto = texto.replace(fac, f"\n{fac}")
 
-    faculdade_atual = None  # Variável para rastrear a faculdade atual sendo processada
+    faculdade_atual = None 
 
-    dados = defaultdict(lambda: {"ida":0,"volta":0,"total":0})  # Dicionário para armazenar contagens por faculdade
+    dados = defaultdict(lambda: {"ida":0,"volta":0,"total":0})  
 
     for linha in texto.split("\n"):
         linha = linha.strip()
