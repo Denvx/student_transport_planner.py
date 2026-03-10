@@ -142,7 +142,7 @@ Sem dependencias externas. Basta ter o Python instalado.
 
 ```bash
 # Clone o repositorio
-git clone https://github.com/seu-usuario/aerj-rotas.git
+https://github.com/Denvx/student_transport_planner.py.git
 
 # Entre na pasta
 cd aerj-rotas
@@ -167,7 +167,7 @@ Para usar com uma nova lista, substitua o conteudo da variavel `texto` no arquiv
 
 ## Contexto
 
-O projeto faz parte de um sistema maior em desenvolvimento para a **AERJ**, associacao responsavel pelo transporte de estudantes universitarios de Riacho do Jacuipe para Feira de Santana e outras cidades da Bahia.
+O projeto faz parte de um sistema maior em desenvolvimento para a **AERJ**, associacao responsavel pelo transporte de estudantes universitarios de Riachão do Jacuipe para Feira de Santana e outras cidades.
 
 O objetivo e digitalizar e automatizar processos que hoje dependem de controle manual, reduzindo erros e otimizando o uso da frota.
 
@@ -177,4 +177,4 @@ O objetivo e digitalizar e automatizar processos que hoje dependem de controle m
 
 **Denver Oliveira**  
 Estudante de Desenvolvimento de Sistemas  
-Riacho do Jacuipe, Bahia
+Riachão do Jacuipe, Bahia
