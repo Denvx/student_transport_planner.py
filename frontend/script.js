@@ -282,7 +282,7 @@ document.addEventListener('keydown', e => {
   if(e.key === 'Escape') fecharExport();
 });
 
-const API = 'http://localhost:5000';
+const API = 'https://student-transport-api.onrender.com';
 
 async function processar(){
   // flush inputs antes de enviar
@@ -322,7 +322,7 @@ async function processar(){
     render(data);
     $('exportBtn').style.display = 'flex';
   } catch(e){
-    showErr('Não foi possível conectar à API. Verifique se o servidor está rodando em localhost:5000.');
+    showErr('Não foi possível conectar à API. Verifique se o servidor está rodando em https://student-transport-api.onrender.com.');
   } finally {
     btn.classList.remove('loading'); btn.disabled=false;
   }
