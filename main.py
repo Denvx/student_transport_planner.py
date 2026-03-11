@@ -1,7 +1,7 @@
-from coordenadas import coordenadas, origem
-from distancia import distancia_rota
-from parser_lista import processar_lista
-from distribuicao import distribuir
+from src.coordenadas import coordenadas, origem
+from src.distancia import distancia_rota
+from src.parser_lista import processar_lista
+from src.distribuicao import distribuir
 
 
 texto = """
