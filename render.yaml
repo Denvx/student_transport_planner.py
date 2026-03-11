@@ -10,7 +10,7 @@ services:
       - key: PYTHON_VERSION
         value: 3.11.0
 
-  # ── Front-end estático ──────────────────────────────────────────
+  # ── Front-end estático ────────────────────────────────────────── 
   - type: web
     name: student-transport-frontend
     runtime: static
