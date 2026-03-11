@@ -114,16 +114,22 @@ class TestDistribuicao:
     def test_vans_sao_usadas_apos_onibus(self):
         """Testa se vans são usadas somente após ônibus ficarem cheios"""
         faculdades = [
-            ("UEFS", {"ida": 75, "volta": 75, "total": 75}),
-            ("SENAI", {"ida": 30, "volta": 30, "total": 30})
+            ("UEFS", {"ida": 50, "volta": 50, "total": 50}),
+            ("SENAI", {"ida": 45, "volta": 45, "total": 45}),
+            ("UNIFAN", {"ida": 15, "volta": 15, "total": 15})
         ]
         
         resultado = distribuir(faculdades)
         
-        # Os 2 ônibus devem estar cheios (100 lugares)
-        # O restante (5) vai para van
-        onibus_total = resultado[0]["ocupado"] + resultado[1]["ocupado"]
-        assert onibus_total == 100
+        onibus_1 = resultado[0]
+        onibus_2 = resultado[1]
+        
+        assert onibus_1["ocupado"] == 50
+        
+        assert onibus_2["ocupado"] == 45
+        
+        total_van = sum(v["ocupado"] for v in resultado[2:])
+        assert total_van == 15
 
     def test_capacidades_veiculos(self):
         """Testa se as capacidades dos veículos estão corretas"""

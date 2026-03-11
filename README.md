@@ -129,8 +129,11 @@ O código está organizado em módulos para facilitar manutenção e testes:
 git clone https://github.com/Denvx/student_transport_planner.py.git
 cd student_transport_planner.py
 
-# Instale as dependências
+# Instale as dependências principais
 pip install openrouteservice python-dotenv
+
+# Instale também pytest para rodar os testes
+pip install pytest pytest-mock
 ```
 
 ### 3. Configuração da API
@@ -153,6 +156,58 @@ python main.py
 ```
 
 Para usar com uma nova lista, substitua o conteudo da variavel `texto` no arquivo `main.py` pelo texto atualizado da lista de transporte.
+
+---
+
+## Testes
+
+O projeto possui uma suite de **39 testes** cobrindo todas as funcionalidades. Os testes utilizam mocks para a API externa (não fazem chamadas reais).
+
+### Estrutura de Testes
+
+- `test_parser_lista.py` — 9 testes para parsing de texto
+- `test_coordenadas.py` — 8 testes para validação de dados geográficos  
+- `test_distancia.py` — 6 testes para cálculo de rotas
+- `test_distribuicao.py` — 11 testes para alocação em veículos
+- `test_integracao.py` — 5 testes do fluxo completo (end-to-end)
+
+### Rodar Todos os Testes
+
+```bash
+python -m pytest tests/ -v
+```
+
+### Rodar Teste Específico
+
+Rodar um arquivo de testes:
+```bash
+python -m pytest tests/test_parser_lista.py -v
+```
+
+Rodar um único teste:
+```bash
+python -m pytest tests/test_parser_lista.py::TestProcessarLista::test_uma_faculdade_ida_e_volta -v
+```
+
+### Visualizar Cobertura de Código
+
+```bash
+# Instale ferramenta de cobertura
+pip install pytest-cov
+
+# Gere relatório
+python -m pytest tests/ --cov=src --cov-report=html
+
+# Abra em navegador (será criado em htmlcov/index.html)
+```
+
+### Resultado Esperado
+
+```
+============================= 39 passed in ~3s =============================
+```
+
+Todos os testes devem passar sem erros.
 
 ---
 
