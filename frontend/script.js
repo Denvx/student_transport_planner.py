@@ -55,9 +55,6 @@ const COLORS = ['#1d5ce5','#2f72ff','#5592ff','#7eb3ff','#38bdf8','#22d3ee','#34
 let _uid = 5;
 let VEHICLES = [
   {id:'v1', name:'Ônibus 1', cap:50, color:'#1d5ce5'},
-  {id:'v2', name:'Ônibus 2', cap:50, color:'#2f72ff'},
-  {id:'v3', name:'Van 1',    cap:20, color:'#5592ff'},
-  {id:'v4', name:'Van 2',    cap:15, color:'#7eb3ff'},
 ];
 
 const $ = id => document.getElementById(id);
@@ -237,7 +234,7 @@ function gerarTexto(data){
 
   if(sem_veiculo && sem_veiculo.length > 0){
     linhas.push('');
-    linhas.push('⚠️ *SEM VEÍCULO DISPONÍVEL*');
+    linhas.push(' *SEM VEÍCULO DISPONÍVEL*');
     sem_veiculo.forEach(f => {
       linhas.push(`${f.nome}- ${f.ida} ida / ${f.volta} volta`);
     });
