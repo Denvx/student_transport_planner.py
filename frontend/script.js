@@ -52,7 +52,7 @@ SENAI
 
 // ── frota ─────────────────────────────────────────────────────
 const COLORS = ['#1d5ce5','#2f72ff','#5592ff','#7eb3ff','#38bdf8','#22d3ee','#34d399','#a78bfa'];
-let _uid = 5;
+let _uid = 2;
 let VEHICLES = [
   {id:'v1', name:'Ônibus 1', cap:50, color:'#1d5ce5'},
 ];
@@ -93,7 +93,7 @@ function addVehicle(){
 }
 
 function removeVehicle(id){
-  if(VEHICLES.length<=1){alert('É preciso ter pelo menos 1 veículo.');return;}
+  if(VEHICLES.length<=1){ showToast("É necessário ter pelo menos 1 veículo na frota."); return;}
   VEHICLES = VEHICLES.filter(v=>v.id!==id);
   renderFleet();
 }
@@ -295,10 +295,8 @@ async function processar(){
   const txt = $('listInput').value.trim();
   const btn = $('runBtn');
 
-  if(!txt){ alert('Cole a lista primeiro!'); return; }
-  if(VEHICLES.some(v=>!v.name)){
-    alert('Preencha o nome de todos os veículos antes de calcular.');
-    return;
+  if(!txt){showToast("Cole a lista de alunos antes de calcular as rotas.");  return;}
+  if(VEHICLES.some(v=>!v.name)){showToast("Todos os veículos precisam ter um nome antes de calcular."); return;
   }
 
   btn.classList.add('loading'); btn.disabled=true;
@@ -314,13 +312,100 @@ async function processar(){
       }),
     });
     const data = await res.json();
-    if(!res.ok){ showErr(data.erro||`Erro ${res.status}`); return; }
+    if(!res.ok){showToast(data.erro || "O servidor não conseguiu processar a lista."); return;}
     _lastData = data;
     render(data);
     $('exportBtn').style.display = 'flex';
   } catch(e){
-    showErr('Não foi possível conectar à API. Verifique se o servidor está rodando em https://student-transport-planner-py.onrender.com');
+    showToast("Não foi possível conectar ao servidor. Verifique sua internet.");
   } finally {
     btn.classList.remove('loading'); btn.disabled=false;
   }
 }
+
+function showToast(msg, type="error"){
+
+  let container = document.getElementById("toastContainer");
+
+  if(!container){
+    container = document.createElement("div");
+    container.id = "toastContainer";
+    document.body.appendChild(container);
+  }
+
+  const toast = document.createElement("div");
+  toast.className = `toast ${type}`;
+  toast.textContent = msg;
+
+  container.appendChild(toast);
+
+  setTimeout(()=>{
+    toast.remove();
+  },4000);
+}
+
+/* TUTORIAL */
+const tutorialSteps = [
+  {
+    title: "Bem-vindo ao planejador",
+    text: "Este sistema organiza alunos em veículos automaticamente."
+  },
+  {
+    title: "Cole a lista de alunos",
+    text: "Cole a lista das faculdades e alunos na caixa principal."
+  },
+  {
+    title: "Adicione veículos",
+    text: "Clique em 'Adicionar veículo' para incluir ônibus ou vans."
+  },
+  {
+    title: "Defina capacidade",
+    text: "Informe quantos alunos cabem em cada veículo."
+  },
+  {
+    title: "Calcule as rotas",
+    text: "Clique em calcular e o sistema distribuirá os alunos automaticamente."
+  }
+];
+
+let tutorialIndex = 0;
+
+function startTutorial(){
+  tutorialIndex = 0;
+  showTutorialStep();
+}
+
+function showTutorialStep(){
+  const step = tutorialSteps[tutorialIndex];
+
+  document.getElementById("tutorialTitle").textContent = step.title;
+  document.getElementById("tutorialText").textContent = step.text;
+}
+
+function nextTutorial(){
+  tutorialIndex++;
+
+  if(tutorialIndex >= tutorialSteps.length){
+    document.getElementById("tutorialOverlay").style.display = "none";
+    localStorage.setItem("tutorial_seen","true");
+    return;
+  }
+
+  showTutorialStep();
+}
+
+function skipTutorial(){
+  document.getElementById("tutorialOverlay").style.display = "none";
+  localStorage.setItem("tutorial_seen","true");
+}
+
+/* APARECER SO UMA VEZ */
+document.addEventListener("DOMContentLoaded", ()=>{
+
+  if(!localStorage.getItem("tutorial_seen")){
+    startTutorial();
+  } else {
+    document.getElementById("tutorialOverlay").style.display = "none";
+  }
+
+});
