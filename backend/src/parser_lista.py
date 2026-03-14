@@ -4,7 +4,7 @@ from collections import defaultdict
 
 def processar_lista(texto, coordenadas):
 
-    for fac in coordenadas.keys():
+    for fac in coordenadas:
         texto = texto.replace(fac, f"\n{fac}")
 
     faculdade_atual = None 
@@ -12,16 +12,16 @@ def processar_lista(texto, coordenadas):
     dados = defaultdict(lambda: {"ida":0,"volta":0,"total":0})  
 
     for linha in texto.split("\n"):
-        linha = linha.strip()
+        linha = linha.strip().upper()
 
         if not linha:
             continue
 
-        if linha.isupper() and len(linha) < 30:
+        if linha in coordenadas:
             faculdade_atual = linha  # Identifica o nome da faculdade (em maiúsculo)
             continue
 
-        if re.match(r"\d+\.", linha) and faculdade_atual:
+        if re.match(r"\d+[\.\-\)]\s+.+", linha) and faculdade_atual:
             linha_lower = linha.lower()
 
             ida = False
