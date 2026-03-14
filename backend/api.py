@@ -1,5 +1,6 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
+from flask import send_from_directory
 
 from src.coordenadas import coordenadas, origem
 from src.distancia import distancia_rota
@@ -141,6 +142,9 @@ def planejar():
 def ping():
     return jsonify({"status": "ok"})
 
+@app.route("/")
+def index():
+    return send_from_directory(".", "index.html")
 
 if __name__ == "__main__":
     app.run(debug=True, port=5000)
