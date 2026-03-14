@@ -143,12 +143,11 @@ def planejar():
 def ping():
     return jsonify({"status": "ok"})
 
-
-@app.route("/<path:path>")
-def static_files(path):
+@app.route("/")
+def index():
     base_dir = os.path.dirname(os.path.abspath(__file__))
     frontend_path = os.path.join(base_dir, "..", "frontend")
-    return send_from_directory(frontend_path, path)
+    return send_from_directory(frontend_path, "index.html")
 
 if __name__ == "__main__":
     app.run(debug=True, port=5000)
