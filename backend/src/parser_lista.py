@@ -4,6 +4,7 @@ from collections import defaultdict
 
 def processar_lista(texto, coordenadas):
 
+    texto = texto.replace("*", "")
     for fac in coordenadas:
         texto = texto.replace(fac, f"\n{fac}")
 
@@ -17,11 +18,11 @@ def processar_lista(texto, coordenadas):
         if not linha:
             continue
 
-        if linha in coordenadas:
-            faculdade_atual = linha  # Identifica o nome da faculdade (em maiúsculo)
+        if linha.strip(":") in coordenadas:
+            faculdade_atual = linha.strip(":")  # Identifica o nome da faculdade (em maiúsculo)
             continue
 
-        if re.match(r"\d+[\.\-\)]\s+.+", linha) and faculdade_atual:
+        if re.match(r"\d+\s*[\.\-\)]?\s*.+", linha) and faculdade_atual:
             linha_lower = linha.lower()
 
             ida = False
