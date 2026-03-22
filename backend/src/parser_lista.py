@@ -18,11 +18,13 @@ def processar_lista(texto, coordenadas):
         if not linha:
             continue
 
-        if linha.strip(":") in coordenadas:
-            faculdade_atual = linha.strip(":")  # Identifica o nome da faculdade (em maiúsculo)
-            continue
+        if re.match(r"\d+\s*[\.\)\-]?\s*\S+", linha) and faculdade_atual:
+    
+            nome_limpo = re.sub(r"\d+\s*[\.\)\-]?", "", linha).strip()
 
-        if re.match(r"\d+\s*[\.\-\)]?\s*.+", linha) and faculdade_atual:
+            if len(nome_limpo) < 2:
+                continue
+
             linha_lower = linha.lower()
 
             ida = False
