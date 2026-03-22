@@ -18,9 +18,11 @@ def processar_lista(texto, coordenadas):
         if not linha:
             continue
 
-        if re.match(r"\d+\s*[\.\)\-]?\s*\S+", linha) and faculdade_atual:
+        if re.match(r"\d+\s*[\.\)\-]?", linha) and faculdade_atual:
     
             nome_limpo = re.sub(r"\d+\s*[\.\)\-]?", "", linha).strip()
+
+            nome_limpo = re.sub(r"\(.*?\)", "", nome_limpo).strip()
 
             if len(nome_limpo) < 2:
                 continue
