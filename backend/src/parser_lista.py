@@ -18,13 +18,17 @@ def processar_lista(texto, coordenadas):
         if not linha:
             continue
 
+        if linha in coordenadas:
+            faculdade_atual = linha
+            continue
+
         if re.match(r"\d+\s*[\.\)\-]?", linha) and faculdade_atual:
     
-            nome_limpo = re.sub(r"\d+\s*[\.\)\-]?", "", linha).strip()
+            nome_limpo = re.sub(r"^\d+\s*[\.\)\-]?\s*", "", linha).strip()
 
-            nome_limpo = re.sub(r"\(.*?\)", "", nome_limpo).strip()
+            nome_limpo = re.sub(r"[\u200b\u200c\u200d\uFEFF\xa0]", "", nome_limpo).strip()
 
-            if len(nome_limpo) < 2:
+            if len(nome_limpo) < 2 or not re.search(r"[A-ZÀ-Ú]", nome_limpo):
                 continue
 
             linha_lower = linha.lower()
