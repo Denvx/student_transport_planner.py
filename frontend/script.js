@@ -116,7 +116,7 @@ const IC = {
   alert:    `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`,
 };
 
-// ── render ─────────────────────────────────────────────────────
+// ── render ───────────────────────────────────────────────────── 
 function showErr(msg){
   $('results').innerHTML = `<div class="err-box">${IC.alert}<span>${msg}</span></div>`;
   $('resultTag').textContent = 'erro';
@@ -279,6 +279,7 @@ document.addEventListener('keydown', e => {
   if(e.key === 'Escape') fecharExport();
 });
 
+//const API = 'http://localhost:5000';
 const API = 'https://student-transport-planner-py.onrender.com';
 
 async function processar(){
