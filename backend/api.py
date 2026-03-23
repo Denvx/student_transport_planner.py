@@ -51,6 +51,8 @@ def planejar():
         return jsonify({"erro": "Informe pelo menos um veículo."}), 400
 
     dados = processar_lista(lista_texto, coordenadas)
+    for fac, info in dados.items():
+        print(f"{fac}: ida={info['ida']} volta={info['volta']} total={info['total']}")
 
     if not dados:
         return jsonify({"erro": "Nenhuma faculdade reconhecida na lista."}), 422
@@ -122,7 +124,7 @@ def planejar():
             "faculdades": facs,
         })
 
-    total_alunos = sum(v["ocupado"] for v in resultado_veiculos)
+    total_alunos = sum(v["ocupado"] for v in resultado_veiculos) + sum(sv["total"] for sv in sem_veiculo)
     total_ida    = sum(f["ida"]   for v in resultado_veiculos for f in v["faculdades"])
     total_volta  = sum(f["volta"] for v in resultado_veiculos for f in v["faculdades"])
     veic_usados  = sum(1 for v in resultado_veiculos if v["ocupado"] > 0)
