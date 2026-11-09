@@ -554,8 +554,9 @@ document.addEventListener('keydown', e => {
 });
 
 // ── servidor ─────────────────────────────────────────────────
-// Servido pelo próprio Flask (local) → mesma origem; publicado → API no Render.
-const API = ['localhost','127.0.0.1'].includes(location.hostname) ? '' : 'https://student-transport-planner-py.onrender.com';
+// A tela é servida pelo próprio Flask (local ou no Render), então a API fica
+// na mesma origem. Só o arquivo aberto direto do disco (file://) não tem servidor.
+const API = location.protocol === 'file:' ? 'http://127.0.0.1:5000' : '';
 
 // O plano gratuito do Render "dorme": a primeira requisição pode levar ~30–60 s.
 const ACORDANDO_APOS_MS = 3000;

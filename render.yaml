@@ -1,26 +1,16 @@
 services:
-  # ── Back-end Flask ──────────────────────────────────────────────
+  # Um serviço só: o Flask é a API e também entrega a tela (pasta frontend).
   - type: web
-    name: student-transport-api
+    name: aerj-planejamento-rotas
     runtime: python
-    rootDir: backend
-    buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn api:app 
+    plan: free
+    branch: main
+    autoDeploy: true
+    buildCommand: pip install -r backend/requirements.txt
+    startCommand: gunicorn --chdir backend api:app
+    healthCheckPath: /ping
     envVars:
       - key: PYTHON_VERSION
-        value: 3.11.0
-
-  # ── Front-end estático ────────────────────────────────────────── 
-  - type: web
-    name: student-transport-frontend
-    runtime: static
-    rootDir: frontend
-    staticPublishPath: .
-    headers:
-      - path: /*
-        name: Cache-Control
-        value: no-cache
-    routes:
-      - type: rewrite
-        source: /*
-        destination: /index.html
+        value: 3.11.9
+      - key: ORS_API_KEY
+        sync: false
