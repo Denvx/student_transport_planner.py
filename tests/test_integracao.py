@@ -5,6 +5,16 @@ from src.coordenadas import coordenadas, origem
 from src.distancia import distancia_rota
 from src.distribuicao import distribuir
 
+# Frota explícita — distribuir() sem veiculos_config é um fallback interno
+# de 1 ônibus só, nunca exercitado em produção (api.py sempre manda a frota
+# do request). Espelha a tabela "Frota Disponível" do README.md.
+FROTA_PADRAO = [
+    {"nome": "Ônibus 1", "capacidade": 50},
+    {"nome": "Ônibus 2", "capacidade": 50},
+    {"nome": "Van 1", "capacidade": 20},
+    {"nome": "Van 2", "capacidade": 15},
+]
+
 
 class TestIntegracaoFull:
     """Teste de integração: simulação do fluxo completo do sistema"""
@@ -70,10 +80,10 @@ class TestIntegracaoFull:
         dados = processar_lista(texto, coordenadas)
         
         faculdades_ordenadas = [(fac, info) for fac, info in dados.items()]
-        
-        veiculos = distribuir(faculdades_ordenadas)
-        
-        assert len(veiculos) == 6
+
+        veiculos = distribuir(faculdades_ordenadas, veiculos_config=FROTA_PADRAO)
+
+        assert len(veiculos) == 4
         total_alocado = sum(v["ocupado"] for v in veiculos)
         assert total_alocado == dados["UEFS"]["total"]
 

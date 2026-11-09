@@ -99,6 +99,20 @@ class TestProcessarLista:
         assert "QUADRIVIUM" in resultado
         assert resultado["QUADRIVIUM"]["total"] == 1
 
+    def test_nome_contendo_substring_ida_nao_e_mal_classificado(self):
+        """Bug real: sobrenome 'Almeida' contém a substring 'ida' — sem \\b
+        na regex, o aluno era classificado como só-ida em vez de ida+volta."""
+        texto = """
+        UEFS
+        1. Carlos Almeida
+        2. Joao Silva
+        """
+        resultado = processar_lista(texto, coordenadas)
+        # Nenhum dos dois tem tag explícita -> os dois vão ida e volta
+        assert resultado["UEFS"]["ida"] == 2
+        assert resultado["UEFS"]["volta"] == 2
+        assert resultado["UEFS"]["total"] == 2
+
     def test_misto_ida_volta(self):
         """Testa combinação de ida, volta e ambos"""
         texto = """

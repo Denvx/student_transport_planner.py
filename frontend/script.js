@@ -116,13 +116,35 @@ const IC = {
   alert:    `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`,
 };
 
-// ── render ───────────────────────────────────────────────────── 
+// ── render ─────────────────────────────────────────────────────
+// Textos vindos da lista (ex.: nome de faculdade desconhecida) entram no HTML escapados
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+function warningsHtml(warnings, critical){
+  if(!warnings || !warnings.length) return '';
+  const cor = critical ? '#f87171' : 'var(--amber)';
+  return `
+    <div class="overflow-card" style="animation-delay:.04s;border-color:${cor}">
+      <div class="overflow-hd">
+        <span style="color:${cor}">${critical ? IC.alert : IC.warn}</span>
+        <span class="overflow-hd-txt">${critical ? 'regra obrigatória não atendida' : 'avisos'}</span>
+      </div>
+      ${warnings.map(w=>`<div class="overflow-row"><span class="overflow-name" style="white-space:normal">${esc(w)}</span></div>`).join('')}
+      ${critical ? '<p class="overflow-hint">Nenhuma distribuição foi sugerida. Ajuste a frota (mais veículos ou capacidade) e recalcule.</p>' : ''}
+    </div>`;
+}
+
+function renderCritical(resp){
+  $('resultTag').textContent = 'crítico';
+  $('results').innerHTML = warningsHtml(resp.warnings, true);
+}
+
 function showErr(msg){
   $('results').innerHTML = `<div class="err-box">${IC.alert}<span>${msg}</span></div>`;
   $('resultTag').textContent = 'erro';
 }
 
-function render(data){
+function render(data, warnings){
   const {veiculos, sem_veiculo, totais} = data;
   const ativos = veiculos.filter(v=>v.ocupado>0);
 
@@ -142,6 +164,8 @@ function render(data){
     </div>`;
   html += `</div>`;
 
+  html += warningsHtml(warnings, false);
+
   // overflow alert
   if(sem_veiculo && sem_veiculo.length > 0){
     const totalSem = sem_veiculo.reduce((s,f)=>s+f.total,0);
@@ -155,10 +179,10 @@ function render(data){
       ${sem_veiculo.map(f=>`
         <div class="overflow-row">
           <span class="school-idx">—</span>
-          <span class="overflow-name">${f.nome}</span>
+          <span class="overflow-name">${esc(f.nome)}</span>
           <div class="chips">
-            <span class="chip chip-b">${IC.up} ${f.ida}</span>
-            <span class="chip chip-t">${IC.down} ${f.volta}</span>
+            <span class="chip chip-b">${IC.up} ${f.ida ?? '—'}</span>
+            <span class="chip chip-t">${IC.down} ${f.volta ?? '—'}</span>
             <span class="chip" style="background:rgba(245,158,11,.12);color:#fbbf24">${IC.users} ${f.total} total</span>
           </div>
         </div>`).join('')}
@@ -189,11 +213,11 @@ function render(data){
         ${v.faculdades.map((f,idx)=>`
           <div class="school-row">
             <span class="school-idx">${idx+1}</span>
-            <span class="school-name">${f.nome}</span>
+            <span class="school-name">${esc(f.nome)}</span>
             <div class="chips">
               <span class="chip chip-b">${IC.up} ${f.ida}</span>
               <span class="chip chip-t">${IC.down} ${f.volta}</span>
-              <span class="chip chip-g">${IC.pin} ${f.distancia_m?Math.round(f.distancia_m/1000)+'km':'—'}</span>
+              <span class="chip chip-g" title="${f.rota_estimada?'estimada em linha reta':''}">${IC.pin} ${f.distancia_m?(f.rota_estimada?'~':'')+Math.round(f.distancia_m/1000)+'km':'—'}</span>
             </div>
           </div>`).join('')}
       </div>
@@ -223,7 +247,8 @@ function gerarTexto(data){
     let totIda = 0, totVolta = 0;
     v.faculdades.forEach(f => {
       // capitaliza só a primeira letra de cada palavra
-      const nome = f.nome.charAt(0).toUpperCase() + f.nome.slice(1).toLowerCase();
+      const n = f.nome.replace(/_/g, ' ');
+      const nome = n.charAt(0).toUpperCase() + n.slice(1).toLowerCase();
       linhas.push(`${nome}- ${f.ida} ida / ${f.volta} volta`);
       totIda   += f.ida;
       totVolta += f.volta;
@@ -236,7 +261,9 @@ function gerarTexto(data){
     linhas.push('');
     linhas.push(' *SEM VEÍCULO DISPONÍVEL*');
     sem_veiculo.forEach(f => {
-      linhas.push(`${f.nome}- ${f.ida} ida / ${f.volta} volta`);
+      linhas.push(f.ida == null
+        ? `${f.nome}- ${f.total} aluno(s)`
+        : `${f.nome}- ${f.ida} ida / ${f.volta} volta`);
     });
   }
 
@@ -313,9 +340,19 @@ async function processar(){
       }),
     });
     const data = await res.json();
-    if(!res.ok){showToast(data.erro || "O servidor não conseguiu processar a lista."); return;}
-    _lastData = data;
-    render(data);
+    if(!res.ok){
+      const extra = (data.warnings || []).join(' ');
+      showToast((data.erro || "O servidor não conseguiu processar a lista.") + (extra ? ' ' + extra : ''));
+      return;
+    }
+    if(data.critical){
+      _lastData = null;
+      $('exportBtn').style.display = 'none';
+      renderCritical(data);
+      return;
+    }
+    _lastData = data.suggestion;
+    render(data.suggestion, data.warnings);
     $('exportBtn').style.display = 'flex';
   } catch(e){
     showToast("Não foi possível conectar ao servidor. Verifique sua internet.");

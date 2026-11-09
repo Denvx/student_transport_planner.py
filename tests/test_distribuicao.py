@@ -1,23 +1,34 @@
 import pytest
 from src.distribuicao import distribuir
 
+# Frota de referência usada nos testes que dependem de uma frota explícita
+# (distribuir() sem veiculos_config é um fallback interno de 1 ônibus só,
+# nunca exercitado em produção — api.py sempre manda a frota do request).
+# Frota abaixo espelha a tabela "Frota Disponível" do README.md do projeto.
+FROTA_PADRAO = [
+    {"nome": "Ônibus 1", "capacidade": 50},
+    {"nome": "Ônibus 2", "capacidade": 50},
+    {"nome": "Van 1", "capacidade": 20},
+    {"nome": "Van 2", "capacidade": 15},
+]
+
 
 class TestDistribuicao:
     """Testes para lógica de distribuição de alunos nos veículos"""
 
     def test_distribuicao_vazia(self):
-        """Testa distribuição com lista vazia"""
-        resultado = distribuir([])
-        
-        assert len(resultado) == 6  # 2 ônibus + 4 vans
+        """Testa distribuição com lista vazia, frota explícita"""
+        resultado = distribuir([], veiculos_config=FROTA_PADRAO)
+
+        assert len(resultado) == 4  # 2 ônibus + 2 vans
         for veiculo in resultado:
             assert veiculo["ocupado"] == 0
             assert veiculo["faculdades"] == []
 
     def test_cargas_iniciais_zeradas(self):
         """Testa se todos os veículos começam vazios"""
-        resultado = distribuir([])
-        
+        resultado = distribuir([], veiculos_config=FROTA_PADRAO)
+
         for veiculo in resultado:
             assert veiculo["ocupado"] == 0
             assert "capacidade" in veiculo
@@ -53,9 +64,9 @@ class TestDistribuicao:
             ("SENAI", {"ida": 30, "volta": 30, "total": 30}),
             ("UNIFAN", {"ida": 20, "volta": 20, "total": 20})
         ]
-        
-        resultado = distribuir(faculdades)
-        
+
+        resultado = distribuir(faculdades, veiculos_config=FROTA_PADRAO)
+
         total_distribuido = sum(v["ocupado"] for v in resultado)
         assert total_distribuido == 80
 
@@ -86,14 +97,17 @@ class TestDistribuicao:
 
     def test_nenhum_grupo_deixado_para_tras(self):
         """Testa se todos os grupos são distribuídos"""
+        # UNIRB no lugar de UEFS/UNIFAN aqui de propósito: UEFS e UNIFAN têm
+        # comportamento especial (ver test_distribuicao_uefs.py / regras
+        # obrigatórias), este teste quer só bin-packing genérico.
         faculdades = [
-            ("UEFS", {"ida": 45, "volta": 45, "total": 45}),
+            ("UNIRB", {"ida": 45, "volta": 45, "total": 45}),
             ("SENAI", {"ida": 40, "volta": 40, "total": 40}),
-            ("UNIFAN", {"ida": 15, "volta": 15, "total": 15})
+            ("GRAU", {"ida": 15, "volta": 15, "total": 15})
         ]
-        
-        resultado = distribuir(faculdades)
-        
+
+        resultado = distribuir(faculdades, veiculos_config=FROTA_PADRAO)
+
         total_faculdades_distribuidas = sum(
             len(v["faculdades"]) for v in resultado
         )
@@ -113,17 +127,19 @@ class TestDistribuicao:
 
     def test_vans_sao_usadas_apos_onibus(self):
         """Testa se vans são usadas somente após ônibus ficarem cheios"""
+        # UNIRB/GRAU no lugar de UEFS/UNIFAN aqui de propósito — ver
+        # comentário em test_nenhum_grupo_deixado_para_tras.
         faculdades = [
-            ("UEFS", {"ida": 50, "volta": 50, "total": 50}),
+            ("UNIRB", {"ida": 50, "volta": 50, "total": 50}),
             ("SENAI", {"ida": 45, "volta": 45, "total": 45}),
-            ("UNIFAN", {"ida": 15, "volta": 15, "total": 15})
+            ("GRAU", {"ida": 15, "volta": 15, "total": 15})
         ]
-        
-        resultado = distribuir(faculdades)
-        
+
+        resultado = distribuir(faculdades, veiculos_config=FROTA_PADRAO)
+
         onibus_1 = resultado[0]
         onibus_2 = resultado[1]
-        
+
         assert onibus_1["ocupado"] == 50
         
         assert onibus_2["ocupado"] == 45
@@ -133,7 +149,7 @@ class TestDistribuicao:
 
     def test_capacidades_veiculos(self):
         """Testa se as capacidades dos veículos estão corretas"""
-        resultado = distribuir([])
+        resultado = distribuir([], veiculos_config=FROTA_PADRAO)
         
         nomes_capacidades = {v["nome"]: v["capacidade"] for v in resultado}
         

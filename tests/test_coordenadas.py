@@ -23,6 +23,18 @@ class TestCoordenadas:
             assert isinstance(lat, (int, float))
             assert isinstance(lon, (int, float))
 
+    def test_faculdades_enviadas_pelo_backend_tem_coordenadas(self):
+        """O backend manda o nome da constante do InstitutionEnum (ex.: ESTACIO);
+        se a chave aqui não bater exatamente, a faculdade fica sem coordenada."""
+        for nome in ["UNIFAT", "ESTACIO"]:
+            assert nome in coordenadas
+
+    def test_chaves_sem_caracteres_invisiveis(self):
+        """Chave com caractere invisível (ex.: U+2060) nunca casa com nada."""
+        import unicodedata
+        for nome in coordenadas:
+            assert not any(unicodedata.category(c) == "Cf" for c in nome), repr(nome)
+
     def test_origem_existe(self):
         """Testa se ponto de origem é definido"""
         assert origem is not None

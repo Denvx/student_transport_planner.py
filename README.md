@@ -67,11 +67,13 @@ SENAI
 
 O script percorre o texto linha a linha e:
 
-- Identifica o nome da faculdade quando a linha esta em maiusculas
-- Detecta entradas numeradas e extrai o nome do passageiro
-- Verifica se ha indicacao de "ida" ou "volta" na linha
+- Identifica o cabecalho da faculdade sem depender de maiusculas, acento, negrito (`*UNEF*`) ou complemento entre parenteses: `Curso Aprovado` vira `CURSO_APROVADO`, `UFRB (FIAT)` vira `UFRB`, `Estácio` vira `ESTACIO`
+- Ignora o titulo e os avisos da lista (e le a data do titulo, ex.: `09/11/26`)
+- Detecta entradas numeradas e extrai o nome do passageiro; linhas vazias (`1.`) nao contam
+- Verifica se ha indicacao de "ida" ou "volta" como palavra isolada (`Almeida` nao conta como "ida")
 - Quando nao ha indicacao, assume que o aluno vai nos dois sentidos
-- Ignora entradas duplicadas (mesmo numero de linha repetido dentro da mesma faculdade)
+- Cabecalho de faculdade desconhecida gera aviso e seus nomes sao ignorados — nunca caem na faculdade anterior
+- Faculdade conhecida sem coordenada (ex.: UFRB) e contada, vai para o fim da rota e gera aviso
 
 ### 3. Ordenacao por distancia
 
@@ -90,6 +92,27 @@ Com os grupos ordenados, o algoritmo percorre a lista e aloca cada faculdade no 
 Van 1 (19/20)
  - UNIFAN    | Ida: 18 | Volta: 15 | Total: 18
  - IFBA      | Ida:  1 | Volta:  1 | Total:  1
+```
+
+Regras aplicadas (as mesmas do motor do sistema da AERJ):
+
+- **UNEX e UNEF nunca no mesmo veiculo**
+- **UNIFAN e QUADRIVIUM sempre juntas**
+- **IFBA e UNEF sempre juntas**, com prioridade para irem juntas numa van
+- **UEFS e dividida**: completa a capacidade que sobrou nos onibus (e depois nas vans), podendo aparecer em mais de um veiculo
+
+Se a frota informada nao permite cumprir uma regra obrigatoria, a resposta e `CRITICAL` e nenhuma distribuicao e sugerida — o sistema nao inventa uma saida que quebre a regra.
+
+### 5. Resposta da API
+
+```json
+{
+  "status": "SUCCESS | WARNING | CRITICAL",
+  "critical": false,
+  "suggestion": { "veiculos": [], "sem_veiculo": [], "totais": {} },
+  "warnings": ["..."],
+  "lista": { "data": "09/11/26", "faculdades": [] }
+}
 ```
 
 ---
@@ -161,7 +184,7 @@ Para usar com uma nova lista, substitua o conteudo da variavel `texto` no arquiv
 
 ## Testes
 
-O projeto possui uma suite de **39 testes** cobrindo todas as funcionalidades. Os testes utilizam mocks para a API externa (não fazem chamadas reais).
+O projeto possui uma suite de **77 testes** cobrindo todas as funcionalidades. Os testes utilizam mocks para a API externa (não fazem chamadas reais).
 
 ### Estrutura de Testes
 
