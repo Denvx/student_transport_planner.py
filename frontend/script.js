@@ -57,6 +57,22 @@ let VEHICLES = [
   {id:'v1', name:'Ônibus 1', cap:50, color:'#1d5ce5'},
 ];
 
+// A frota fica salva neste navegador (muda pouco de um dia pro outro).
+// try/catch: aba anônima / armazenamento bloqueado não pode quebrar a página.
+const FLEET_KEY = 'aerj_planner_frota';
+function saveFleet(){
+  try{ localStorage.setItem(FLEET_KEY, JSON.stringify(VEHICLES.map(({name,cap})=>({name,cap})))); }catch{}
+}
+function loadFleet(){
+  try{
+    const salvo = JSON.parse(localStorage.getItem(FLEET_KEY) || 'null');
+    if(Array.isArray(salvo) && salvo.length){
+      VEHICLES = salvo.map((v,i)=>({id:'v'+(i+1), name:String(v.name||''), cap:Math.max(1,parseInt(v.cap)||1), color:COLORS[i%COLORS.length]}));
+      _uid = VEHICLES.length + 1;
+    }
+  }catch{}
+}
+
 const $ = id => document.getElementById(id);
 
 function fleetCount(){
@@ -69,17 +85,20 @@ function renderFleet(){
   if(!list) return;
   list.innerHTML = VEHICLES.map((v,i)=>`
     <div class="fleet-item" id="fi-${v.id}" style="animation-delay:${i*.04}s">
-      <div class="fleet-dot" style="background:${v.color}"></div>
-      <input class="fleet-name-input" type="text" value="${v.name}"
-        placeholder="nome do veículo"
-        onchange="updateName('${v.id}',this.value)" title="Nome">
+      <div class="fleet-dot" style="background:${v.color}" aria-hidden="true"></div>
+      <input class="fleet-name-input" type="text" value="${esc(v.name)}"
+        name="veiculo-${v.id}" autocomplete="off" enterkeyhint="next"
+        placeholder="Nome do veículo, ex.: Van 1…" aria-label="Nome do veículo ${i+1}"
+        oninput="updateName('${v.id}',this.value)">
       <div class="fleet-cap-wrap">
-        <span class="fleet-cap-lbl">cap.</span>
+        <span class="fleet-cap-lbl" aria-hidden="true">cap.</span>
         <input class="fleet-cap-input" type="number" min="1" max="200" value="${v.cap}"
-          onchange="updateCap('${v.id}',this.value)" title="Capacidade">
+          inputmode="numeric" name="capacidade-${v.id}" autocomplete="off" enterkeyhint="done"
+          aria-label="Capacidade do veículo ${i+1}"
+          oninput="updateCap('${v.id}',this.value)">
       </div>
-      <button class="btn-del" onclick="removeVehicle('${v.id}')" title="Remover">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+      <button class="btn-del" type="button" onclick="removeVehicle('${v.id}')" aria-label="Remover ${esc(v.name || 'veículo ' + (i+1))}">
+        <svg aria-hidden="true" focusable="false" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
       </button>
     </div>`).join('');
   fleetCount();
@@ -88,32 +107,52 @@ function renderFleet(){
 function addVehicle(){
   VEHICLES.push({id:'v'+(_uid++), name:'', cap:50, color:COLORS[VEHICLES.length%COLORS.length]});
   renderFleet();
+  saveFleet();
   const inputs = document.querySelectorAll('.fleet-name-input');
   if(inputs.length) inputs[inputs.length-1].focus();
 }
 
 function removeVehicle(id){
-  if(VEHICLES.length<=1){ showToast("É necessário ter pelo menos 1 veículo na frota."); return;}
+  if(VEHICLES.length<=1){ showToast("A frota precisa de pelo menos 1 veículo. Edite o nome e a capacidade deste em vez de removê-lo."); return;}
+  const idx = VEHICLES.findIndex(v=>v.id===id);
   VEHICLES = VEHICLES.filter(v=>v.id!==id);
   renderFleet();
+  saveFleet();
+  // foco não pode sumir junto com o botão removido
+  const dels = document.querySelectorAll('.btn-del');
+  if(dels.length) dels[Math.min(idx, dels.length-1)].focus();
 }
 
-function updateName(id,val){ const v=VEHICLES.find(v=>v.id===id); if(v) v.name=val.trim(); }
-function updateCap(id,val){  const v=VEHICLES.find(v=>v.id===id); if(v) v.cap=Math.max(1,parseInt(val)||1); }
+function updateName(id,val){ const v=VEHICLES.find(v=>v.id===id); if(v){ v.name=val.trim(); saveFleet(); } }
+function updateCap(id,val){  const v=VEHICLES.find(v=>v.id===id); if(v){ v.cap=Math.max(1,parseInt(val)||1); saveFleet(); } }
 
-function fillExample(){ $('listInput').value = EXAMPLE; }
+function fillExample(){
+  const el = $('listInput');
+  if(el.value.trim() && el.value !== EXAMPLE && !confirm('Substituir a lista colada pelo exemplo?')) return;
+  el.value = EXAMPLE;
+  el.focus();
+}
 
-document.addEventListener('DOMContentLoaded', renderFleet);
+document.addEventListener('DOMContentLoaded', ()=>{
+  loadFleet();
+  renderFleet();
+  // Ctrl/⌘ + Enter na lista calcula
+  $('listInput').addEventListener('keydown', e=>{
+    if(e.key === 'Enter' && (e.ctrlKey || e.metaKey)){ e.preventDefault(); processar(); }
+  });
+  checkServer();
+});
 
 // ── icons ─────────────────────────────────────────────────────
 const IC = {
-  bus:      `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13" rx="1"/><path d="M16 8h4l3 5v3h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>`,
-  users:    `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`,
-  up:       `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>`,
-  down:     `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>`,
-  pin:      `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>`,
-  warn:     `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`,
-  alert:    `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`,
+  bus:      `<svg aria-hidden="true" focusable="false" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13" rx="1"/><path d="M16 8h4l3 5v3h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>`,
+  users:    `<svg aria-hidden="true" focusable="false" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`,
+  up:       `<svg aria-hidden="true" focusable="false" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>`,
+  down:     `<svg aria-hidden="true" focusable="false" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>`,
+  pin:      `<svg aria-hidden="true" focusable="false" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>`,
+  warn:     `<svg aria-hidden="true" focusable="false" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`,
+  check:    `<svg aria-hidden="true" focusable="false" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`,
+  alert:    `<svg aria-hidden="true" focusable="false" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`,
 };
 
 // ── render ─────────────────────────────────────────────────────
@@ -144,17 +183,204 @@ function showErr(msg){
   $('resultTag').textContent = 'erro';
 }
 
-function render(data, warnings){
-  const {veiculos, sem_veiculo, totais} = data;
-  const ativos = veiculos.filter(v=>v.ocupado>0);
+// ── plano: sugestão → ajuste manual → aprovação (mesmo fluxo do Planejamento Diário da AERJ) ──
+// _plano é a distribuição atual; _sugestao guarda a original do motor para "desfazer ajustes".
+let _plano = null;
+let _sugestao = null;
+let _listaCalculada = '';
+let _avisos = [];
+let _validacao = { estado: 'validando', erros: [] }; // 'ok' | 'erro' | 'validando' | 'falhou'
+let _validacaoSeq = 0;
+let _validacaoTimer = null;
+const SEM_VEICULO = '__sem_veiculo__';
 
-  $('resultTag').textContent = `${ativos.length} veículo${ativos.length!==1?'s':''}`;
+const copia = o => JSON.parse(JSON.stringify(o));
+const nomeFac = n => n.replace(/_/g, ' ');
+
+function iniciarPlano(sugestao, avisos, lista){
+  _sugestao = copia(sugestao);
+  _plano = copia(sugestao);
+  _plano.status = 'sugestao';
+  _listaCalculada = lista;
+  _avisos = avisos || [];
+  _lastData = _plano;
+  recalcular();
+  _validacao = { estado: 'validando', erros: [] };
+  renderPlano(true);
+  validarAjuste();
+}
+
+function recalcular(){
+  _plano.veiculos.forEach(v => { v.ocupado = v.faculdades.reduce((s,f)=>s+f.total, 0); });
+  _plano.totais.veiculos_usados = _plano.veiculos.filter(v=>v.ocupado>0).length;
+}
+
+// Ordem de parada: mais perto primeiro (sem distância conhecida vai pro fim)
+function ordenarPorDistancia(facs){
+  facs.sort((a,b)=>(a.distancia_m ?? Infinity) - (b.distancia_m ?? Infinity));
+}
+
+function moverBloco(origem, idx, destino){
+  if(!_plano || _plano.status === 'aprovado' || origem === destino) return;
+  const lista = origem === SEM_VEICULO ? _plano.sem_veiculo : _plano.veiculos[origem].faculdades;
+  const [bloco] = lista.splice(idx, 1);
+  const alvo = destino === SEM_VEICULO ? _plano.sem_veiculo : _plano.veiculos[destino].faculdades;
+  const mesma = alvo.find(f => f.nome === bloco.nome);
+  if(mesma){ // mesma faculdade já no destino: junta os alunos
+    mesma.ida += bloco.ida; mesma.volta += bloco.volta; mesma.total += bloco.total;
+  } else {
+    alvo.push(bloco);
+    ordenarPorDistancia(alvo);
+  }
+  _plano.status = 'ajustado';
+  recalcular();
+  _validacaoSeq++;
+  _validacao = { estado: 'validando', erros: [] };
+  renderPlano(false, {destino, fac: bloco.nome});
+  agendarValidacao();
+}
+
+function desfazerAjustes(){
+  if(!_sugestao || _plano?.status === 'aprovado') return;
+  _plano = copia(_sugestao);
+  _plano.status = 'sugestao';
+  _lastData = _plano;
+  recalcular();
+  _validacao = { estado: 'validando', erros: [] };
+  renderPlano(false);
+  validarAjuste();
+  showToast('Ajustes desfeitos — voltou para a sugestão do sistema.', 'success');
+}
+
+function agendarValidacao(){
+  _validacaoSeq++; // qualquer validação em andamento ficou velha: a resposta dela será ignorada
+  _validacao = { estado: 'validando', erros: [] };
+  renderPainelAjuste();
+  clearTimeout(_validacaoTimer);
+  _validacaoTimer = setTimeout(()=>validarAjuste(), 350);
+}
+
+// O servidor revalida tudo (capacidade, ninguém de fora/sobrando, regras obrigatórias).
+async function validarAjuste(){
+  if(!_plano) return null;
+  const seq = ++_validacaoSeq;
+  _validacao = { estado: 'validando', erros: [] };
+  renderPainelAjuste();
+  try{
+    const res = await fetch(`${API}/validar-ajuste`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ lista: _listaCalculada, veiculos: _plano.veiculos.map(v=>({
+        nome: v.nome, capacidade: v.capacidade,
+        faculdades: v.faculdades.map(({nome, ida, volta, total})=>({nome, ida, volta, total})),
+      })) }),
+    });
+    const r = await res.json();
+    if(seq !== _validacaoSeq) return null; // resposta velha: já houve outra mudança
+    if(!res.ok) throw new Error(r.erro || 'falha');
+    _validacao = { estado: r.valido ? 'ok' : 'erro', erros: r.erros || [] };
+  }catch{
+    if(seq !== _validacaoSeq) return null;
+    _validacao = { estado: 'falhou', erros: [] };
+  }
+  renderPainelAjuste();
+  return _validacao.estado === 'ok';
+}
+
+async function aprovarPlano(){
+  if(!_plano || _plano.status === 'aprovado') return;
+  const btn = $('approveBtn');
+  if(btn) btn.disabled = true;
+  clearTimeout(_validacaoTimer);
+  const ok = await validarAjuste(); // valida de novo na hora de aprovar
+  if(!ok){
+    showToast('A distribuição ainda não pode ser aprovada. Corrija os pontos em vermelho e tente de novo.');
+    return;
+  }
+  _plano.status = 'aprovado';
+  _plano.aprovadoEm = new Intl.DateTimeFormat('pt-BR', {hour:'2-digit', minute:'2-digit'}).format(new Date());
+  renderPlano(false);
+  showToast(`Distribuição aprovada às ${_plano.aprovadoEm}. Use “exportar” para mandar no WhatsApp.`, 'success');
+  $('exportBtn')?.focus();
+}
+
+function seletorMover(origem, idx, f){
+  if(_plano.status === 'aprovado') return '';
+  const opcoes = _plano.veiculos.map((v,vi)=>
+    `<option value="${vi}" ${vi===origem?'selected':''}>${esc(v.nome)} (${v.ocupado}/${v.capacidade})</option>`).join('');
+  return `
+    <label class="move-wrap">
+      <span class="sr-only">Mover ${esc(nomeFac(f.nome))} (${f.total} aluno${f.total!==1?'s':''}) para</span>
+      <span class="move-lbl" aria-hidden="true">mover para</span>
+      <select class="move-select" data-origem="${origem}" data-idx="${idx}" data-fac="${esc(f.nome)}"
+        onchange="moverBloco(${origem===SEM_VEICULO?`'${SEM_VEICULO}'`:origem}, ${idx}, this.value==='${SEM_VEICULO}'?'${SEM_VEICULO}':Number(this.value))">
+        ${opcoes}
+        <option value="${SEM_VEICULO}" ${origem===SEM_VEICULO?'selected':''}>Sem veículo</option>
+      </select>
+    </label>`;
+}
+
+function linhaFaculdade(f, idx, origem){
+  return `
+    <div class="school-row">
+      <span class="school-idx">${origem===SEM_VEICULO ? '—' : idx+1}</span>
+      <span class="school-name">${esc(nomeFac(f.nome))}</span>
+      <div class="chips">
+        <span class="chip chip-b">${IC.up} ${f.ida}<span class="sr-only"> de ida</span></span>
+        <span class="chip chip-t">${IC.down} ${f.volta}<span class="sr-only"> de volta</span></span>
+        ${origem===SEM_VEICULO
+          ? `<span class="chip" style="background:rgba(245,158,11,.12);color:#fbbf24">${IC.users} ${f.total}<span class="sr-only"> alunos</span></span>`
+          : `<span class="chip chip-g" title="${f.rota_estimada?'estimada em linha reta':''}">${IC.pin} ${f.distancia_m?(f.rota_estimada?'~':'')+Math.round(f.distancia_m/1000)+'km':'—'}</span>`}
+      </div>
+      ${seletorMover(origem, idx, f)}
+    </div>`;
+}
+
+function painelAjusteHtml(){
+  const st = _plano.status;
+  if(st === 'aprovado'){
+    return `<div class="plan-bar plan-bar--ok">
+      <span class="plan-status">${IC.check} <strong>Aprovada</strong> às ${esc(_plano.aprovadoEm)}</span>
+      <span class="plan-hint">Para mudar, calcule de novo.</span>
+    </div>`;
+  }
+  const v = _validacao;
+  let msg;
+  if(v.estado === 'validando') msg = `<span class="plan-status plan-status--wait">validando…</span>`;
+  else if(v.estado === 'ok') msg = `<span class="plan-status plan-status--ok">${IC.check} ${st==='sugestao'?'Sugestão do sistema — pronta para aprovar':'Ajuste válido — pronto para aprovar'}</span>`;
+  else if(v.estado === 'falhou') msg = `<span class="plan-status plan-status--err">Não foi possível validar agora. Tente aprovar de novo em instantes.</span>`;
+  else msg = `<span class="plan-status plan-status--err">${IC.alert} ${v.erros.length} problema${v.erros.length!==1?'s':''} para resolver</span>
+    <ul class="plan-errs">${v.erros.map(e=>`<li>${esc(e)}</li>`).join('')}</ul>`;
+  return `<div class="plan-bar ${v.estado==='erro'||v.estado==='falhou'?'plan-bar--err':''}">
+    <div class="plan-msg">${msg}</div>
+    <p class="plan-hint">Não concorda? Use “mover para” em cada faculdade — o sistema confere capacidade e as regras a cada mudança.</p>
+    <div class="plan-actions">
+      ${st==='ajustado' ? `<button type="button" class="btn-ghost" onclick="desfazerAjustes()">Desfazer ajustes</button>` : ''}
+      <button type="button" class="btn-approve" id="approveBtn" onclick="aprovarPlano()" ${v.estado==='ok'?'':'disabled'}>${IC.check} Aprovar distribuição</button>
+    </div>
+  </div>`;
+}
+
+function renderPainelAjuste(){
+  const el = $('planPanel');
+  if(el && _plano) el.innerHTML = painelAjusteHtml();
+}
+
+function render(data, warnings){ iniciarPlano(data, warnings, _listaCalculada); }
+
+function renderPlano(animar, focar){
+  const {veiculos, sem_veiculo, totais} = _plano;
+  const aprovado = _plano.status === 'aprovado';
+  const visiveis = veiculos.map((v,vi)=>({v,vi})).filter(({v})=> !aprovado || v.ocupado>0);
+  const usados = veiculos.filter(v=>v.ocupado>0).length;
+  const rotulo = {sugestao:'sugestão', ajustado:'ajustado', aprovado:'aprovado'}[_plano.status];
+
+  $('resultTag').textContent = `${rotulo} · ${usados} veículo${usados!==1?'s':''}`;
 
   // stats
   const sColors = ['#5592ff','#93c5fd','#f59e0b','#22c55e'];
   const sLabels = ['alunos','ida','volta','veículos'];
   const sIcons  = [IC.users, IC.up, IC.down, IC.bus];
-  const sVals   = [totais.alunos, totais.ida, totais.volta, totais.veiculos_usados];
+  const sVals   = [totais.alunos, totais.ida, totais.volta, usados];
 
   let html = `<div class="stats-grid">`;
   for(let i=0;i<4;i++) html+=`
@@ -164,67 +390,63 @@ function render(data, warnings){
     </div>`;
   html += `</div>`;
 
-  html += warningsHtml(warnings, false);
+  html += `<div id="planPanel">${painelAjusteHtml()}</div>`;
+  html += warningsHtml(_avisos, false);
 
-  // overflow alert
+  // sem veículo: também é uma "caixa" de onde (e para onde) dá pra mover
   if(sem_veiculo && sem_veiculo.length > 0){
     const totalSem = sem_veiculo.reduce((s,f)=>s+f.total,0);
     html += `
     <div class="overflow-card" style="animation-delay:.08s">
       <div class="overflow-hd">
         <span style="color:var(--amber)">${IC.warn}</span>
-        <span class="overflow-hd-txt">sem veículo disponível</span>
+        <span class="overflow-hd-txt">sem veículo</span>
         <span class="overflow-hd-count">${totalSem} aluno${totalSem!==1?'s':''}</span>
       </div>
-      ${sem_veiculo.map(f=>`
-        <div class="overflow-row">
-          <span class="school-idx">—</span>
-          <span class="overflow-name">${esc(f.nome)}</span>
-          <div class="chips">
-            <span class="chip chip-b">${IC.up} ${f.ida ?? '—'}</span>
-            <span class="chip chip-t">${IC.down} ${f.volta ?? '—'}</span>
-            <span class="chip" style="background:rgba(245,158,11,.12);color:#fbbf24">${IC.users} ${f.total} total</span>
-          </div>
-        </div>`).join('')}
-      <p class="overflow-hint">Adicione mais veículos na frota e recalcule.</p>
+      ${sem_veiculo.map((f,idx)=>linhaFaculdade(f, idx, SEM_VEICULO)).join('')}
+      <p class="overflow-hint">Mova para um veículo com espaço ou adicione veículos na frota e recalcule.</p>
     </div>`;
   }
 
-  // veículos
-  if(ativos.length) html += `<div class="sec-divider">veículos alocados</div>`;
+  if(visiveis.length) html += `<div class="sec-divider">${aprovado ? 'veículos aprovados' : 'veículos'}</div>`;
 
-  ativos.forEach((v,i)=>{
-    const cor = VEHICLES.find(x=>x.name===v.nome)?.color || COLORS[i%COLORS.length];
-    const pct = Math.round(v.ocupado/v.capacidade*100);
-    const bc  = pct>90?'#ef4444':pct>70?'#f59e0b':cor;
+  visiveis.forEach(({v, vi}, i)=>{
+    const cor = VEHICLES.find(x=>x.name===v.nome)?.color || COLORS[vi%COLORS.length];
+    const pct = v.capacidade ? Math.round(v.ocupado/v.capacidade*100) : 0;
+    const bc  = pct>100?'#ef4444':pct>90?'#ef4444':pct>70?'#f59e0b':cor;
+    // texto pequeno precisa de cor mais clara que a barra (contraste >= 4,5:1)
+    const tc  = pct>90?'#f87171':pct>70?'#fbbf24':'#93c5fd';
 
     html += `
-    <div class="vcard" style="animation-delay:${.1+i*.08}s;border-left:3px solid ${cor}">
+    <div class="vcard ${pct>100?'vcard--over':''}" style="animation-delay:${.1+i*.08}s;border-left:3px solid ${cor}">
       <div class="vcard-hd">
-        <div class="vcard-ico" style="background:${cor}1f;color:${cor}">${IC.bus}</div>
-        <span class="vcard-name">${v.nome}</span>
-        <span class="vcard-cap" style="color:${bc}">${v.ocupado}/${v.capacidade}</span>
+        <div class="vcard-ico" aria-hidden="true" style="background:${cor}1f;color:${cor}">${IC.bus}</div>
+        <span class="vcard-name">${esc(v.nome)}</span>
+        <span class="vcard-cap" style="color:${tc}">${v.ocupado}/${v.capacidade}${pct>100?' <span class="over-tag">acima</span>':''}</span>
       </div>
       <div class="pbar-wrap">
-        <div class="pbar-meta"><span>ocupação</span><span style="color:${bc}">${pct}%</span></div>
-        <div class="pbar-bg"><div class="pbar-fill" style="width:${pct}%;background:${bc}"></div></div>
+        <div class="pbar-meta"><span>ocupação</span><span style="color:${tc}">${pct}%</span></div>
+        <div class="pbar-bg"><div class="pbar-fill" style="width:${Math.min(pct,100)}%;background:${bc}"></div></div>
       </div>
       <div class="school-list">
-        ${v.faculdades.map((f,idx)=>`
-          <div class="school-row">
-            <span class="school-idx">${idx+1}</span>
-            <span class="school-name">${esc(f.nome)}</span>
-            <div class="chips">
-              <span class="chip chip-b">${IC.up} ${f.ida}</span>
-              <span class="chip chip-t">${IC.down} ${f.volta}</span>
-              <span class="chip chip-g" title="${f.rota_estimada?'estimada em linha reta':''}">${IC.pin} ${f.distancia_m?(f.rota_estimada?'~':'')+Math.round(f.distancia_m/1000)+'km':'—'}</span>
-            </div>
-          </div>`).join('')}
+        ${v.faculdades.length
+          ? v.faculdades.map((f,idx)=>linhaFaculdade(f, idx, vi)).join('')
+          : `<p class="vcard-empty">vazio — mova uma faculdade para cá</p>`}
       </div>
     </div>`;
   });
 
-  $('results').innerHTML = html;
+  const box = $('results');
+  box.classList.toggle('no-anim', !animar);
+  box.innerHTML = html;
+  $('exportBtn').style.display = 'flex';
+
+  // o <select> usado foi recriado: devolve o foco para a faculdade no destino
+  if(focar){
+    const sel = [...box.querySelectorAll('.move-select')]
+      .find(s => s.dataset.fac === focar.fac && s.dataset.origem === String(focar.destino));
+    sel?.focus();
+  }
 }
 
 // ── export ────────────────────────────────────────────────────
@@ -270,20 +492,28 @@ function gerarTexto(data){
   return linhas.join('\n');
 }
 
+// ── modal export (dialog acessível: foco entra, Tab fica dentro, Esc fecha, foco volta) ──
+let _focoAntesDoModal = null;
+
 function abrirExport(){
   if(!_lastData) return;
+  // Safari não foca botão no clique: sem foco útil, volta pro próprio “exportar”
+  _focoAntesDoModal = (document.activeElement && document.activeElement !== document.body) ? document.activeElement : $('exportBtn');
   $('exportText').value = gerarTexto(_lastData);
   $('exportModal').style.display = 'block';
   document.body.style.overflow = 'hidden';
+  $('copyBtn').focus();
 }
 
 function fecharExport(e){
   if(e && e.target !== e.currentTarget) return;
+  if($('exportModal').style.display === 'none') return;
   $('exportModal').style.display = 'none';
   document.body.style.overflow = '';
   // reset botão copiar
   $('copyBtn').classList.remove('copied');
   $('copyTxt').textContent = 'copiar texto';
+  if(_focoAntesDoModal && document.contains(_focoAntesDoModal)) _focoAntesDoModal.focus();
 }
 
 async function copiarTexto(){
@@ -302,12 +532,61 @@ async function copiarTexto(){
   }, 2500);
 }
 
+// Tab/Shift+Tab presos dentro do dialog aberto
+function prenderFoco(e, container){
+  if(e.key !== 'Tab') return;
+  const focaveis = [...container.querySelectorAll('button, textarea, input, [href], [tabindex]:not([tabindex="-1"])')]
+    .filter(el => !el.disabled && el.offsetParent !== null);
+  if(!focaveis.length) return;
+  const primeiro = focaveis[0], ultimo = focaveis[focaveis.length-1];
+  if(e.shiftKey && document.activeElement === primeiro){ e.preventDefault(); ultimo.focus(); }
+  else if(!e.shiftKey && document.activeElement === ultimo){ e.preventDefault(); primeiro.focus(); }
+}
+
 document.addEventListener('keydown', e => {
-  if(e.key === 'Escape') fecharExport();
+  const tutorialAberto = !$('tutorialOverlay').hidden;
+  const exportAberto = $('exportModal').style.display !== 'none';
+  if(e.key === 'Escape'){
+    if(tutorialAberto) skipTutorial();
+    else if(exportAberto) fecharExport();
+    return;
+  }
+  if(tutorialAberto) prenderFoco(e, $('tutorialOverlay'));
+  else if(exportAberto) prenderFoco(e, document.querySelector('#exportModal .modal'));
 });
 
-//const API = 'http://localhost:5000';
-const API = 'https://student-transport-planner-py.onrender.com';
+// ── servidor ─────────────────────────────────────────────────
+// Servido pelo próprio Flask (local) → mesma origem; publicado → API no Render.
+const API = ['localhost','127.0.0.1'].includes(location.hostname) ? '' : 'https://student-transport-planner-py.onrender.com';
+
+// O plano gratuito do Render "dorme": a primeira requisição pode levar ~30–60 s.
+const ACORDANDO_APOS_MS = 3000;
+
+function setServerStatus(estado){
+  const badge = $('serverStatus');
+  if(!badge) return;
+  const textos = { online:'online', waking:'acordando servidor…', offline:'offline', checking:'conectando…' };
+  badge.classList.remove('waking','offline');
+  if(estado === 'waking' || estado === 'checking') badge.classList.add('waking');
+  if(estado === 'offline') badge.classList.add('offline');
+  $('serverStatusTxt').textContent = textos[estado];
+}
+
+async function checkServer(){
+  setServerStatus('checking');
+  const lento = setTimeout(()=>setServerStatus('waking'), ACORDANDO_APOS_MS);
+  try{
+    const ctrl = new AbortController();
+    const limite = setTimeout(()=>ctrl.abort(), 90000);
+    const res = await fetch(`${API}/ping`, {signal: ctrl.signal, cache:'no-store'});
+    clearTimeout(limite);
+    setServerStatus(res.ok ? 'online' : 'offline');
+  }catch{
+    setServerStatus('offline');
+  }finally{
+    clearTimeout(lento);
+  }
+}
 
 async function processar(){
   // flush inputs antes de enviar
@@ -323,12 +602,25 @@ async function processar(){
   const txt = $('listInput').value.trim();
   const btn = $('runBtn');
 
-  if(!txt){showToast("Cole a lista de alunos antes de calcular as rotas.");  return;}
-  if(VEHICLES.some(v=>!v.name)){showToast("Todos os veículos precisam ter um nome antes de calcular."); return;
+  if(!txt){
+    showToast("Cole a lista do WhatsApp no campo “lista de transporte” antes de calcular.");
+    $('listInput').focus();
+    return;
+  }
+  const semNome = VEHICLES.findIndex(v=>!v.name);
+  if(semNome !== -1){
+    showToast(`Dê um nome ao veículo ${semNome+1} (ex.: “Van 1”) antes de calcular.`);
+    document.querySelectorAll('.fleet-name-input')[semNome]?.focus();
+    return;
   }
 
   btn.classList.add('loading'); btn.disabled=true;
-  $('resultTag').textContent = 'calculando...';
+  $('resultTag').textContent = 'calculando…';
+  $('results').setAttribute('aria-busy','true');
+  const lento = setTimeout(()=>{
+    $('resultTag').textContent = 'acordando servidor…';
+    setServerStatus('waking');
+  }, ACORDANDO_APOS_MS);
 
   try {
     const res = await fetch(`${API}/planejar`,{
@@ -339,111 +631,114 @@ async function processar(){
         veiculos: VEHICLES.map(v=>({nome:v.name, capacidade:v.cap})),
       }),
     });
+    setServerStatus('online');
     const data = await res.json();
     if(!res.ok){
       const extra = (data.warnings || []).join(' ');
-      showToast((data.erro || "O servidor não conseguiu processar a lista.") + (extra ? ' ' + extra : ''));
+      showToast((data.erro || "O servidor não conseguiu processar a lista. Confira o formato e tente de novo.") + (extra ? ' ' + extra : ''));
+      $('resultTag').textContent = 'erro';
       return;
     }
     if(data.critical){
-      _lastData = null;
+      _lastData = null; _plano = null;
       $('exportBtn').style.display = 'none';
       renderCritical(data);
       return;
     }
-    _lastData = data.suggestion;
-    render(data.suggestion, data.warnings);
-    $('exportBtn').style.display = 'flex';
+    iniciarPlano(data.suggestion, data.warnings, txt);
   } catch(e){
-    showToast("Não foi possível conectar ao servidor. Verifique sua internet.");
+    setServerStatus('offline');
+    $('resultTag').textContent = 'erro';
+    showToast("Não foi possível falar com o servidor. Confira a internet e tente de novo — se ele estava dormindo, a segunda tentativa costuma funcionar.");
   } finally {
+    clearTimeout(lento);
+    $('results').setAttribute('aria-busy','false');
     btn.classList.remove('loading'); btn.disabled=false;
   }
 }
 
 function showToast(msg, type="error"){
-
   let container = document.getElementById("toastContainer");
-
   if(!container){
     container = document.createElement("div");
     container.id = "toastContainer";
+    container.setAttribute('aria-live','polite');
     document.body.appendChild(container);
   }
 
   const toast = document.createElement("div");
   toast.className = `toast ${type}`;
+  toast.setAttribute('role', type === 'error' ? 'alert' : 'status');
   toast.textContent = msg;
-
   container.appendChild(toast);
 
-  setTimeout(()=>{
-    toast.remove();
-  },4000);
+  // mensagem longa fica mais tempo na tela
+  setTimeout(()=>toast.remove(), Math.max(4000, msg.length * 60));
 }
 
 /* TUTORIAL */
 const tutorialSteps = [
   {
     title: "Bem-vindo ao planejador",
-    text: "Este sistema organiza alunos em veículos automaticamente."
+    text: "Ele distribui os alunos da lista do WhatsApp nos veículos da frota, seguindo as regras da AERJ."
   },
   {
     title: "Cole a lista de alunos",
-    text: "Cole a lista das faculdades e alunos na caixa principal."
+    text: "Cole a lista do jeito que vem do grupo — título, avisos e faculdades vazias são ignorados."
   },
   {
-    title: "Adicione veículos",
-    text: "Clique em 'Adicionar veículo' para incluir ônibus ou vans."
+    title: "Monte a frota",
+    text: "Adicione os ônibus e vans do dia com a capacidade de cada um. A frota fica salva neste navegador."
   },
   {
-    title: "Defina capacidade",
-    text: "Informe quantos alunos cabem em cada veículo."
+    title: "Regras automáticas",
+    text: "UNEX e UNEF nunca juntas; UNIFAN com QUADRIVIUM; IFBA com UNEF; a UEFS completa as vagas que sobram. Se a frota não permite cumprir uma regra, o sistema avisa em vez de inventar."
   },
   {
-    title: "Calcule as rotas",
-    text: "Clique em calcular e o sistema distribuirá os alunos automaticamente."
+    title: "Calcule e exporte",
+    text: "Clique em “Calcular rotas” e depois em “exportar” para copiar o texto pronto para o WhatsApp."
   }
 ];
 
 let tutorialIndex = 0;
 
+function lembrarTutorialVisto(){
+  try{ localStorage.setItem("tutorial_seen","true"); }catch{}
+}
+
 function startTutorial(){
   tutorialIndex = 0;
+  $('tutorialOverlay').hidden = false;
   showTutorialStep();
+  $('tutorialNext').focus();
 }
 
 function showTutorialStep(){
   const step = tutorialSteps[tutorialIndex];
+  $('tutorialStep').textContent = `${tutorialIndex+1}/${tutorialSteps.length}`;
+  $('tutorialTitle').textContent = step.title;
+  $('tutorialText').textContent = step.text;
+  const ultimo = tutorialIndex === tutorialSteps.length-1;
+  $('tutorialNext').textContent = ultimo ? 'Começar' : 'Próximo';
+}
 
-  document.getElementById("tutorialTitle").textContent = step.title;
-  document.getElementById("tutorialText").textContent = step.text;
+function fecharTutorial(){
+  $('tutorialOverlay').hidden = true;
+  lembrarTutorialVisto();
+  $('listInput').focus({preventScroll:true});
 }
 
 function nextTutorial(){
   tutorialIndex++;
-
-  if(tutorialIndex >= tutorialSteps.length){
-    document.getElementById("tutorialOverlay").style.display = "none";
-    localStorage.setItem("tutorial_seen","true");
-    return;
-  }
-
+  if(tutorialIndex >= tutorialSteps.length){ fecharTutorial(); return; }
   showTutorialStep();
 }
 
-function skipTutorial(){
-  document.getElementById("tutorialOverlay").style.display = "none";
-  localStorage.setItem("tutorial_seen","true");
-}
+function skipTutorial(){ fecharTutorial(); }
 
-/* APARECER SO UMA VEZ */
+/* APARECER SO UMA VEZ (overlay já começa escondido no HTML: sem piscar pra quem já viu) */
 document.addEventListener("DOMContentLoaded", ()=>{
-
-  if(!localStorage.getItem("tutorial_seen")){
-    startTutorial();
-  } else {
-    document.getElementById("tutorialOverlay").style.display = "none";
-  }
-
+  let visto = false;
+  try{ visto = !!localStorage.getItem("tutorial_seen"); }catch{}
+  if(!visto) startTutorial();
 });
