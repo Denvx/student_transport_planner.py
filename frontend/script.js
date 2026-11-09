@@ -621,16 +621,30 @@ async function processar(){
   }, ACORDANDO_APOS_MS);
 
   try {
-    const res = await fetch(`${API}/planejar`,{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({
-        lista:    txt,
-        veiculos: VEHICLES.map(v=>({nome:v.name, capacidade:v.cap})),
-      }),
-    });
+    let res;
+    try {
+      res = await fetch(`${API}/planejar`,{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({
+          lista:    txt,
+          veiculos: VEHICLES.map(v=>({nome:v.name, capacidade:v.cap})),
+        }),
+      });
+    } catch {
+      setServerStatus('offline');
+      $('resultTag').textContent = 'Erro';
+      showToast("Não foi possível falar com o servidor. Confira a internet e tente de novo — se ele estava dormindo, a segunda tentativa costuma funcionar.");
+      return;
+    }
+    // Chegou resposta: o servidor está no ar, mesmo que a resposta seja um erro.
     setServerStatus('online');
-    const data = await res.json();
+    const data = await res.json().catch(()=>null);
+    if(!data || (res.ok && !('status' in data))){
+      $('resultTag').textContent = 'Erro';
+      showToast(`O servidor respondeu num formato inesperado (HTTP ${res.status}). Ele pode estar com uma versão antiga do sistema — publique a versão nova e tente de novo.`);
+      return;
+    }
     if(!res.ok){
       const extra = (data.warnings || []).join(' ');
       showToast((data.erro || "O servidor não conseguiu processar a lista. Confira o formato e tente de novo.") + (extra ? ' ' + extra : ''));
@@ -645,9 +659,10 @@ async function processar(){
     }
     iniciarPlano(data.suggestion, data.warnings, txt);
   } catch(e){
-    setServerStatus('offline');
+    // A rede funcionou; o erro foi ao montar a tela com a resposta.
+    console.error(e);
     $('resultTag').textContent = 'Erro';
-    showToast("Não foi possível falar com o servidor. Confira a internet e tente de novo — se ele estava dormindo, a segunda tentativa costuma funcionar.");
+    showToast("O servidor respondeu, mas a resposta não pôde ser exibida. Recarregue a página e tente de novo.");
   } finally {
     clearTimeout(lento);
     $('results').setAttribute('aria-busy','false');
