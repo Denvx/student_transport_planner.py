@@ -103,7 +103,17 @@ Regras aplicadas (as mesmas do motor do sistema da AERJ):
 
 Se a frota informada nao permite cumprir uma regra obrigatoria, a resposta e `CRITICAL` e nenhuma distribuicao e sugerida — o sistema nao inventa uma saida que quebre a regra.
 
-### 5. Resposta da API
+### 5. Sugestão, ajuste e aprovação
+
+O resultado do cálculo é uma **sugestão**. Se ela não for aprovada como está, cada faculdade tem um seletor **"mover para"** (qualquer veículo da frota, inclusive os vazios, ou "Sem veículo"). A cada mudança o servidor revalida o ajuste (`POST /validar-ajuste`) — o navegador monta, o servidor confere, igual ao Planejamento Diário do sistema da AERJ:
+
+- nenhum veículo acima da capacidade;
+- todos os alunos da lista em algum veículo, sem sobra e sem aluno a mais (a quantidade é lida de novo da própria lista no servidor);
+- UNEX e UNEF separadas; UNIFAN com QUADRIVIUM; IFBA com UNEF.
+
+**Aprovar distribuição** só fica disponível com o ajuste válido (e valida de novo na hora). Depois de aprovada, a distribuição trava; para mudar, calcule de novo. **Desfazer ajustes** volta para a sugestão original.
+
+### 6. Resposta da API
 
 ```json
 {
@@ -184,7 +194,7 @@ Para usar com uma nova lista, substitua o conteudo da variavel `texto` no arquiv
 
 ## Testes
 
-O projeto possui uma suite de **77 testes** cobrindo todas as funcionalidades. Os testes utilizam mocks para a API externa (não fazem chamadas reais).
+O projeto possui uma suite de **94 testes** cobrindo todas as funcionalidades. Os testes utilizam mocks para a API externa (não fazem chamadas reais).
 
 ### Estrutura de Testes
 

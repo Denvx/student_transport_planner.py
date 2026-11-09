@@ -67,3 +67,58 @@ def test_validacoes_de_entrada(client):
     assert planejar(client, "", [{"nome": "Ônibus 1", "capacidade": 50}]).status_code == 400
     assert planejar(client, "UNEF\n1. Ana", []).status_code == 400
     assert planejar(client, "texto sem faculdade", [{"nome": "Ônibus 1", "capacidade": 50}]).status_code == 422
+
+
+# ── ajuste manual (/validar-ajuste) ─────────────────────────────
+
+FROTA = [{"nome": "Ônibus 1", "capacidade": 50}, {"nome": "Van 1", "capacidade": 15},
+         {"nome": "Van 2", "capacidade": 15}]
+
+
+def validar(client, lista, veiculos):
+    return client.post("/validar-ajuste", json={"lista": lista, "veiculos": veiculos})
+
+
+def test_sugestao_devolve_todos_os_veiculos_mesmo_vazios(client):
+    s = planejar(client, LISTA, FROTA).get_json()["suggestion"]
+    assert [v["nome"] for v in s["veiculos"]] == ["Ônibus 1", "Van 1", "Van 2"]
+
+
+def test_sugestao_do_motor_passa_na_validacao_do_ajuste(client):
+    s = planejar(client, LISTA, FROTA).get_json()["suggestion"]
+    r = validar(client, LISTA, s["veiculos"]).get_json()
+    assert r == {"valido": True, "erros": []}
+
+
+def test_mover_faculdade_para_veiculo_vazio_continua_valido(client):
+    s = planejar(client, LISTA, FROTA).get_json()["suggestion"]
+    veiculos = s["veiculos"]
+    origem = next(v for v in veiculos if any(f["nome"] == "UEFS" for f in v["faculdades"]))
+    destino = next(v for v in veiculos if not v["faculdades"])
+    uefs = [f for f in origem["faculdades"] if f["nome"] == "UEFS"]
+    origem["faculdades"] = [f for f in origem["faculdades"] if f["nome"] != "UEFS"]
+    destino["faculdades"] = uefs
+    r = validar(client, LISTA, veiculos).get_json()
+    assert r["valido"], r["erros"]
+
+
+def test_ajuste_com_aluno_inventado_e_recusado(client):
+    s = planejar(client, LISTA, FROTA).get_json()["suggestion"]
+    s["veiculos"][0]["faculdades"][0]["total"] += 1
+    r = validar(client, LISTA, s["veiculos"]).get_json()
+    assert r["valido"] is False and r["erros"]
+
+
+def test_sobra_parcial_da_uefs_tem_ida_e_volta(client):
+    lista = "UEFS\n" + "\n".join(f"{i}. Aluno {i}" for i in range(1, 21)) + "\n21. Ana (ida)"
+    s = planejar(client, lista, [{"nome": "Ônibus 1", "capacidade": 15}]).get_json()["suggestion"]
+    sobra = next(f for f in s["sem_veiculo"] if f["nome"] == "UEFS")
+    assert sobra["total"] == 6
+    assert sobra["ida"] is not None and sobra["volta"] is not None
+    alocado = sum(f["volta"] for v in s["veiculos"] for f in v["faculdades"])
+    assert alocado + sobra["volta"] == 20
+
+
+def test_validar_ajuste_entrada_invalida(client):
+    assert validar(client, "", FROTA).status_code == 400
+    assert validar(client, LISTA, []).status_code == 400

@@ -9,6 +9,7 @@ from src.distancia import distancia_rota
 from src.parser_lista import analisar_lista
 from src.distribuicao import distribuir
 from src import regras_obrigatorias
+from src.validacao_ajuste import validar
 
 app = Flask(__name__)
 CORS(app)  # permite o front (aberto no browser) chamar a API
@@ -134,14 +135,13 @@ def planejar():
 
     # UEFS é dividida entre veículos (não é bloco atômico), então "sem_veiculo"
     # não pega sobra PARCIAL dela — compara direto com a demanda original.
-    uefs_original = next((info["total"] for fac, info in faculdades_ordenadas if fac == "UEFS"), 0)
-    uefs_alocada = sum(
-        info["total"] for v in veiculos_final for fac, info in v["faculdades"] if fac == "UEFS"
-    )
-    if uefs_alocada < uefs_original:
-        sobra = uefs_original - uefs_alocada
-        warnings.append(f"Sem capacidade suficiente na frota para {sobra} aluno(s) da UEFS.")
-        sem_veiculo.append({"nome": "UEFS", "ida": None, "volta": None, "total": sobra})
+    uefs_original = dados.get("UEFS", {"ida": 0, "volta": 0, "total": 0})
+    uefs_alocada = {k: sum(info[k] for v in veiculos_final for fac, info in v["faculdades"] if fac == "UEFS")
+                    for k in ("ida", "volta", "total")}
+    if "UEFS" in facs_alocadas and uefs_alocada["total"] < uefs_original["total"]:
+        sobra = {k: uefs_original[k] - uefs_alocada[k] for k in ("ida", "volta", "total")}
+        warnings.append(f"Sem capacidade suficiente na frota para {sobra['total']} aluno(s) da UEFS.")
+        sem_veiculo.append({"nome": "UEFS", **sobra})
 
     estimadas = set()
     resultado_veiculos = []
@@ -191,6 +191,28 @@ def planejar():
         "warnings": warnings,
         "lista": resumo_lista,
     })
+
+
+@app.route("/validar-ajuste", methods=["POST"])
+def validar_ajuste():
+    """
+    Revalida um ajuste manual feito no navegador. A demanda (quantos alunos
+    de cada faculdade, ida/volta) é lida de novo da própria lista no servidor
+    — o cliente não informa quantos alunos existem, só onde colocou cada um.
+
+    Recebe:  { "lista": "<texto>", "veiculos": [{nome, capacidade, faculdades: [{nome, ida, volta, total}]}] }
+    Retorna: { "valido": bool, "erros": [string] }
+    """
+    body = request.get_json(force=True, silent=True) or {}
+    lista_texto = (body.get("lista") or "").strip()
+    veiculos = body.get("veiculos")
+    if not lista_texto:
+        return jsonify({"erro": "Campo 'lista' não pode ser vazio."}), 400
+    if not isinstance(veiculos, list) or not veiculos:
+        return jsonify({"erro": "Informe os veículos do ajuste."}), 400
+
+    demanda = analisar_lista(lista_texto, coordenadas)["dados"]
+    return jsonify(validar(veiculos, demanda))
 
 
 @app.route("/ping", methods=["GET"])
