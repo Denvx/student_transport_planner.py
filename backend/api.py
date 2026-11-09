@@ -79,11 +79,11 @@ def planejar():
     warnings = []
     for d in leitura["desconhecidas"]:
         warnings.append(
-            f"Faculdade não reconhecida: {d['nome']} — {d['alunos']} aluno(s) ignorado(s)."
+            f"Faculdade não reconhecida: {d['nome']} ({d['alunos']} aluno(s) ignorado(s))."
         )
     for fac in leitura["sem_coordenada"]:
         warnings.append(
-            f"{fac} sem coordenada cadastrada — distância desconhecida, fica no fim da rota."
+            f"{fac.replace('_', ' ')} sem coordenada cadastrada: distância desconhecida, fica no fim da rota."
         )
 
     if not dados:
@@ -130,7 +130,7 @@ def planejar():
         if fac not in facs_alocadas
     ]
     if sem_veiculo:
-        nomes = ", ".join(sv["nome"] for sv in sem_veiculo)
+        nomes = ", ".join(sv["nome"].replace("_", " ") for sv in sem_veiculo)
         warnings.append(f"Sem veículo com capacidade disponível para: {nomes}.")
 
     # UEFS é dividida entre veículos (não é bloco atômico), então "sem_veiculo"
@@ -167,7 +167,7 @@ def planejar():
         })
     for fac in sorted(estimadas):
         warnings.append(
-            f"Distância até {fac} estimada em linha reta — rota real indisponível no momento."
+            f"Distância até {fac.replace('_', ' ')} estimada em linha reta (rota real indisponível agora)."
         )
 
     total_alunos = sum(i["total"] for i in dados.values())

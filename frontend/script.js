@@ -161,26 +161,24 @@ const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt
 
 function warningsHtml(warnings, critical){
   if(!warnings || !warnings.length) return '';
-  const cor = critical ? '#f87171' : 'var(--amber)';
   return `
-    <div class="overflow-card" style="animation-delay:.04s;border-color:${cor}">
+    <div class="overflow-card ${critical ? 'is-critical' : ''}">
       <div class="overflow-hd">
-        <span style="color:${cor}">${critical ? IC.alert : IC.warn}</span>
-        <span class="overflow-hd-txt">${critical ? 'regra obrigatória não atendida' : 'avisos'}</span>
+        <span class="overflow-hd-txt">${critical ? 'Não dá para cumprir as regras com essa frota' : 'Avisos'}</span>
       </div>
-      ${warnings.map(w=>`<div class="overflow-row"><span class="overflow-name" style="white-space:normal">${esc(w)}</span></div>`).join('')}
-      ${critical ? '<p class="overflow-hint">Nenhuma distribuição foi sugerida. Ajuste a frota (mais veículos ou capacidade) e recalcule.</p>' : ''}
+      ${warnings.map(w=>`<div class="overflow-row"><span class="overflow-name">${esc(w)}</span></div>`).join('')}
+      ${critical ? '<p class="overflow-hint">Adicione veículos ou aumente a capacidade e calcule de novo.</p>' : ''}
     </div>`;
 }
 
 function renderCritical(resp){
-  $('resultTag').textContent = 'crítico';
+  $('resultTag').textContent = 'Sem solução';
   $('results').innerHTML = warningsHtml(resp.warnings, true);
 }
 
 function showErr(msg){
   $('results').innerHTML = `<div class="err-box">${IC.alert}<span>${msg}</span></div>`;
-  $('resultTag').textContent = 'erro';
+  $('resultTag').textContent = 'Erro';
 }
 
 // ── plano: sugestão → ajuste manual → aprovação (mesmo fluxo do Planejamento Diário da AERJ) ──
@@ -299,7 +297,7 @@ async function aprovarPlano(){
   _plano.status = 'aprovado';
   _plano.aprovadoEm = new Intl.DateTimeFormat('pt-BR', {hour:'2-digit', minute:'2-digit'}).format(new Date());
   renderPlano(false);
-  showToast(`Distribuição aprovada às ${_plano.aprovadoEm}. Use “exportar” para mandar no WhatsApp.`, 'success');
+  showToast(`Distribuição aprovada às ${_plano.aprovadoEm}. Use “Exportar” para mandar no WhatsApp.`, 'success');
   $('exportBtn')?.focus();
 }
 
@@ -310,7 +308,7 @@ function seletorMover(origem, idx, f){
   return `
     <label class="move-wrap">
       <span class="sr-only">Mover ${esc(nomeFac(f.nome))} (${f.total} aluno${f.total!==1?'s':''}) para</span>
-      <span class="move-lbl" aria-hidden="true">mover para</span>
+      <span class="move-lbl" aria-hidden="true">Mover para</span>
       <select class="move-select" data-origem="${origem}" data-idx="${idx}" data-fac="${esc(f.nome)}"
         onchange="moverBloco(${origem===SEM_VEICULO?`'${SEM_VEICULO}'`:origem}, ${idx}, this.value==='${SEM_VEICULO}'?'${SEM_VEICULO}':Number(this.value))">
         ${opcoes}
@@ -346,13 +344,13 @@ function painelAjusteHtml(){
   const v = _validacao;
   let msg;
   if(v.estado === 'validando') msg = `<span class="plan-status plan-status--wait">validando…</span>`;
-  else if(v.estado === 'ok') msg = `<span class="plan-status plan-status--ok">${IC.check} ${st==='sugestao'?'Sugestão do sistema — pronta para aprovar':'Ajuste válido — pronto para aprovar'}</span>`;
-  else if(v.estado === 'falhou') msg = `<span class="plan-status plan-status--err">Não foi possível validar agora. Tente aprovar de novo em instantes.</span>`;
-  else msg = `<span class="plan-status plan-status--err">${IC.alert} ${v.erros.length} problema${v.erros.length!==1?'s':''} para resolver</span>
+  else if(v.estado === 'ok') msg = `<span class="plan-status plan-status--ok">${IC.check} ${st==='sugestao'?'Sugestão pronta para aprovar':'Ajuste válido, pronto para aprovar'}</span>`;
+  else if(v.estado === 'falhou') msg = `<span class="plan-status plan-status--err">Não deu para conferir agora. Tente aprovar de novo em instantes.</span>`;
+  else msg = `<span class="plan-status plan-status--err">Corrija antes de aprovar:</span>
     <ul class="plan-errs">${v.erros.map(e=>`<li>${esc(e)}</li>`).join('')}</ul>`;
   return `<div class="plan-bar ${v.estado==='erro'||v.estado==='falhou'?'plan-bar--err':''}">
     <div class="plan-msg">${msg}</div>
-    <p class="plan-hint">Não concorda? Use “mover para” em cada faculdade — o sistema confere capacidade e as regras a cada mudança.</p>
+    <p class="plan-hint">Para trocar uma faculdade de veículo, use “Mover para”.</p>
     <div class="plan-actions">
       ${st==='ajustado' ? `<button type="button" class="btn-ghost" onclick="desfazerAjustes()">Desfazer ajustes</button>` : ''}
       <button type="button" class="btn-approve" id="approveBtn" onclick="aprovarPlano()" ${v.estado==='ok'?'':'disabled'}>${IC.check} Aprovar distribuição</button>
@@ -372,13 +370,13 @@ function renderPlano(animar, focar){
   const aprovado = _plano.status === 'aprovado';
   const visiveis = veiculos.map((v,vi)=>({v,vi})).filter(({v})=> !aprovado || v.ocupado>0);
   const usados = veiculos.filter(v=>v.ocupado>0).length;
-  const rotulo = {sugestao:'sugestão', ajustado:'ajustado', aprovado:'aprovado'}[_plano.status];
+  const rotulo = {sugestao:'Sugestão', ajustado:'Ajustada', aprovado:'Aprovada'}[_plano.status];
 
-  $('resultTag').textContent = `${rotulo} · ${usados} veículo${usados!==1?'s':''}`;
+  $('resultTag').textContent = rotulo;
 
   // stats
   const sColors = ['#5592ff','#93c5fd','#f59e0b','#22c55e'];
-  const sLabels = ['alunos','ida','volta','veículos'];
+  const sLabels = ['Alunos','Ida','Volta','Veículos'];
   const sIcons  = [IC.users, IC.up, IC.down, IC.bus];
   const sVals   = [totais.alunos, totais.ida, totais.volta, usados];
 
@@ -400,7 +398,7 @@ function renderPlano(animar, focar){
     <div class="overflow-card" style="animation-delay:.08s">
       <div class="overflow-hd">
         <span style="color:var(--amber)">${IC.warn}</span>
-        <span class="overflow-hd-txt">sem veículo</span>
+        <span class="overflow-hd-txt">Sem veículo</span>
         <span class="overflow-hd-count">${totalSem} aluno${totalSem!==1?'s':''}</span>
       </div>
       ${sem_veiculo.map((f,idx)=>linhaFaculdade(f, idx, SEM_VEICULO)).join('')}
@@ -408,7 +406,7 @@ function renderPlano(animar, focar){
     </div>`;
   }
 
-  if(visiveis.length) html += `<div class="sec-divider">${aprovado ? 'veículos aprovados' : 'veículos'}</div>`;
+  if(visiveis.length) html += `<div class="sec-divider">Veículos</div>`;
 
   visiveis.forEach(({v, vi}, i)=>{
     const cor = VEHICLES.find(x=>x.name===v.nome)?.color || COLORS[vi%COLORS.length];
@@ -431,7 +429,7 @@ function renderPlano(animar, focar){
       <div class="school-list">
         ${v.faculdades.length
           ? v.faculdades.map((f,idx)=>linhaFaculdade(f, idx, vi)).join('')
-          : `<p class="vcard-empty">vazio — mova uma faculdade para cá</p>`}
+          : `<p class="vcard-empty">Vazio</p>`}
       </div>
     </div>`;
   });
@@ -512,7 +510,7 @@ function fecharExport(e){
   document.body.style.overflow = '';
   // reset botão copiar
   $('copyBtn').classList.remove('copied');
-  $('copyTxt').textContent = 'copiar texto';
+  $('copyTxt').textContent = 'Copiar texto';
   if(_focoAntesDoModal && document.contains(_focoAntesDoModal)) _focoAntesDoModal.focus();
 }
 
@@ -525,10 +523,10 @@ async function copiarTexto(){
     document.execCommand('copy');
   }
   $('copyBtn').classList.add('copied');
-  $('copyTxt').textContent = '✓ copiado!';
+  $('copyTxt').textContent = 'Copiado';
   setTimeout(()=>{
     $('copyBtn').classList.remove('copied');
-    $('copyTxt').textContent = 'copiar texto';
+    $('copyTxt').textContent = 'Copiar texto';
   }, 2500);
 }
 
@@ -565,7 +563,7 @@ const ACORDANDO_APOS_MS = 3000;
 function setServerStatus(estado){
   const badge = $('serverStatus');
   if(!badge) return;
-  const textos = { online:'online', waking:'acordando servidor…', offline:'offline', checking:'conectando…' };
+  const textos = { online:'Servidor online', waking:'Servidor acordando…', offline:'Servidor fora do ar', checking:'Conectando…' };
   badge.classList.remove('waking','offline');
   if(estado === 'waking' || estado === 'checking') badge.classList.add('waking');
   if(estado === 'offline') badge.classList.add('offline');
@@ -615,10 +613,10 @@ async function processar(){
   }
 
   btn.classList.add('loading'); btn.disabled=true;
-  $('resultTag').textContent = 'calculando…';
+  $('resultTag').textContent = 'Calculando…';
   $('results').setAttribute('aria-busy','true');
   const lento = setTimeout(()=>{
-    $('resultTag').textContent = 'acordando servidor…';
+    $('resultTag').textContent = 'Servidor acordando…';
     setServerStatus('waking');
   }, ACORDANDO_APOS_MS);
 
@@ -636,7 +634,7 @@ async function processar(){
     if(!res.ok){
       const extra = (data.warnings || []).join(' ');
       showToast((data.erro || "O servidor não conseguiu processar a lista. Confira o formato e tente de novo.") + (extra ? ' ' + extra : ''));
-      $('resultTag').textContent = 'erro';
+      $('resultTag').textContent = 'Erro';
       return;
     }
     if(data.critical){
@@ -648,7 +646,7 @@ async function processar(){
     iniciarPlano(data.suggestion, data.warnings, txt);
   } catch(e){
     setServerStatus('offline');
-    $('resultTag').textContent = 'erro';
+    $('resultTag').textContent = 'Erro';
     showToast("Não foi possível falar com o servidor. Confira a internet e tente de novo — se ele estava dormindo, a segunda tentativa costuma funcionar.");
   } finally {
     clearTimeout(lento);
@@ -677,33 +675,27 @@ function showToast(msg, type="error"){
 }
 
 /* TUTORIAL */
+// v2: a versão anterior já marcou "tutorial_seen" — chave nova para todo mundo ver este uma vez
+const TUTORIAL_KEY = 'aerj_planner_tutorial_v2';
 const tutorialSteps = [
   {
-    title: "Bem-vindo ao planejador",
-    text: "Ele distribui os alunos da lista do WhatsApp nos veículos da frota, seguindo as regras da AERJ."
+    title: "Como funciona",
+    text: "Cole a lista do grupo, confira a frota e clique em Calcular rotas."
   },
   {
-    title: "Cole a lista de alunos",
-    text: "Cole a lista do jeito que vem do grupo — título, avisos e faculdades vazias são ignorados."
+    title: "Regras",
+    text: "UNEX e UNEF nunca vão juntas. UNIFAN vai com QUADRIVIUM e IFBA com UNEF. A UEFS completa as vagas que sobrarem."
   },
   {
-    title: "Monte a frota",
-    text: "Adicione os ônibus e vans do dia com a capacidade de cada um. A frota fica salva neste navegador."
-  },
-  {
-    title: "Regras automáticas",
-    text: "UNEX e UNEF nunca juntas; UNIFAN com QUADRIVIUM; IFBA com UNEF; a UEFS completa as vagas que sobram. Se a frota não permite cumprir uma regra, o sistema avisa em vez de inventar."
-  },
-  {
-    title: "Calcule e exporte",
-    text: "Clique em “Calcular rotas” e depois em “exportar” para copiar o texto pronto para o WhatsApp."
+    title: "Ajuste e aprovação",
+    text: "Se não concordar com a sugestão, troque faculdades de veículo em “Mover para”. Cada mudança é conferida antes de liberar a aprovação."
   }
 ];
 
 let tutorialIndex = 0;
 
 function lembrarTutorialVisto(){
-  try{ localStorage.setItem("tutorial_seen","true"); }catch{}
+  try{ localStorage.setItem(TUTORIAL_KEY,"1"); }catch{}
 }
 
 function startTutorial(){
@@ -739,6 +731,6 @@ function skipTutorial(){ fecharTutorial(); }
 /* APARECER SO UMA VEZ (overlay já começa escondido no HTML: sem piscar pra quem já viu) */
 document.addEventListener("DOMContentLoaded", ()=>{
   let visto = false;
-  try{ visto = !!localStorage.getItem("tutorial_seen"); }catch{}
+  try{ visto = !!localStorage.getItem(TUTORIAL_KEY); }catch{}
   if(!visto) startTutorial();
 });
